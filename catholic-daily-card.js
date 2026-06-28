@@ -974,7 +974,7 @@ class CatholicDailyCard extends HTMLElement {
 
         /* ── Rosary ── */
         .rosary-mystery-name {
-          font-size: 20px;
+          font-size: 14px;
           font-weight: bold;
           color: ${accent};
           text-align: center;
@@ -1160,8 +1160,8 @@ class CatholicDailyCard extends HTMLElement {
 
         <!-- Header -->
         <div class="header">
-          <div class="header-symbols">✝ ☧ ✝</div>
-          <div class="header-title">Family Daily Prayer</div>
+          <div class="header-symbols">🙏</div>
+          <div class="header-title">Daily Prayer</div>
           <div class="header-date">${dayName}, ${dateStr}</div>
         </div>
 
@@ -1188,7 +1188,7 @@ class CatholicDailyCard extends HTMLElement {
             <span class="section-header-icon">📿</span>
             Mysteries of the Rosary
           </div>
-          <div class="rosary-mystery-name">📿 ${rosary.subtitle}</div>
+          <div class="rosary-mystery-name">${rosary.subtitle}</div>
           <div class="rosary-days">${rosary.days}</div>
         </div>
 
