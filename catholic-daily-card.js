@@ -865,12 +865,14 @@ class CatholicDailyCard extends HTMLElement {
       <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-        :host { display: block; }
+        :host { display: block; background: transparent; }
 
         .card {
-          background: var(--ha-card-background, var(--card-background-color, transparent));
+          background: var(--ha-card-background, rgba(255, 255, 255, 0.06));
+          backdrop-filter: blur(20px);
+          -webkit-backdrop-filter: blur(20px);
           border-radius: var(--ha-card-border-radius, 12px);
-          border: var(--ha-card-border-width, 1px) solid var(--ha-card-border-color, var(--divider-color, rgba(0,0,0,0.12)));
+          border: var(--ha-card-border-width, 1px) solid var(--ha-card-border-color, rgba(255, 255, 255, 0.18));
           box-shadow: var(--ha-card-box-shadow, none);
           overflow: hidden;
           font-family: Georgia, 'Times New Roman', serif;
