@@ -868,9 +868,7 @@ class CatholicDailyCard extends HTMLElement {
         :host { display: block; }
 
         .card {
-          background: var(--card-background-color, #ffffff);
-          border-radius: 16px;
-          overflow: hidden;
+          background: transparent;
           font-family: Georgia, 'Times New Roman', serif;
           color: var(--primary-text-color, #1a1a1a);
         }
@@ -1141,7 +1139,7 @@ class CatholicDailyCard extends HTMLElement {
 
         /* ── Footer ── */
         .footer {
-          background: var(--secondary-background-color, transparent);
+          background: transparent;
           padding: 8px 20px;
           text-align: center;
           font-size: 10px;
