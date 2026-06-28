@@ -868,11 +868,11 @@ class CatholicDailyCard extends HTMLElement {
         :host { display: block; }
 
         .card {
-          background: transparent;
+          background: var(--card-background-color, #ffffff);
           border-radius: 16px;
           overflow: hidden;
           font-family: Georgia, 'Times New Roman', serif;
-          color: #1a1a1a;
+          color: var(--primary-text-color, #1a1a1a);
         }
 
         /* ── Header ── */
@@ -921,7 +921,7 @@ class CatholicDailyCard extends HTMLElement {
         /* ── Section ── */
         .section {
           padding: 16px 20px;
-          border-bottom: 1px solid #f0f0f0;
+          border-bottom: 1px solid var(--divider-color, #f0f0f0);
         }
         .section:last-child { border-bottom: none; }
 
@@ -949,14 +949,14 @@ class CatholicDailyCard extends HTMLElement {
           line-height: 1.4;
         }
         .reading-label {
-          color: #888;
+          color: var(--secondary-text-color, #888);
           font-size: 11px;
           text-transform: uppercase;
           letter-spacing: 0.5px;
           padding-top: 1px;
         }
         .reading-ref {
-          color: #1a1a1a;
+          color: var(--primary-text-color, #1a1a1a);
           font-style: italic;
         }
         .reading-feat {
@@ -967,7 +967,7 @@ class CatholicDailyCard extends HTMLElement {
         }
         .weekday-note {
           font-size: 13px;
-          color: #555;
+          color: var(--primary-text-color, #555);
           line-height: 1.6;
         }
         .weekday-note a { color: ${accent}; }
@@ -983,7 +983,7 @@ class CatholicDailyCard extends HTMLElement {
         }
         .rosary-days {
           font-size: 11px;
-          color: #999;
+          color: var(--secondary-text-color, #999);
           text-align: center;
           font-style: italic;
         }
@@ -992,12 +992,12 @@ class CatholicDailyCard extends HTMLElement {
         .prayer-name {
           font-size: 16px;
           font-weight: bold;
-          color: #333;
+          color: var(--primary-text-color, #333);
           margin-bottom: 2px;
         }
         .prayer-lang {
           font-size: 11px;
-          color: #999;
+          color: var(--secondary-text-color, #999);
           text-transform: uppercase;
           letter-spacing: 1px;
         }
@@ -1029,7 +1029,7 @@ class CatholicDailyCard extends HTMLElement {
           margin-top: 10px;
           font-size: 13px;
           line-height: 1.9;
-          color: #333;
+          color: var(--primary-text-color, #333);
           white-space: pre-wrap;
           background: ${accentLight};
           padding: 12px 16px;
@@ -1051,7 +1051,7 @@ class CatholicDailyCard extends HTMLElement {
         }
         .office-season {
           font-size: 12px;
-          color: #888;
+          color: var(--secondary-text-color, #888);
           font-style: italic;
         }
         .psalter-badge {
@@ -1093,17 +1093,17 @@ class CatholicDailyCard extends HTMLElement {
           font-size: 13px;
           margin-top: 8px;
         }
-        .hours-table tr { border-bottom: 1px solid #f0f0f0; }
+        .hours-table tr { border-bottom: 1px solid var(--divider-color, #f0f0f0); }
         .hours-table tr:last-child { border-bottom: none; }
         .hours-table td { padding: 6px 4px; vertical-align: middle; }
         .hours-table .hour-icon { width: 24px; font-size: 15px; }
         .hours-table .hour-name {
-          color: #333;
+          color: var(--primary-text-color, #333);
           font-weight: bold;
           width: 130px;
         }
         .hours-table .hour-latin {
-          color: #999;
+          color: var(--secondary-text-color, #999);
           font-style: italic;
           font-size: 11px;
         }
@@ -1121,7 +1121,7 @@ class CatholicDailyCard extends HTMLElement {
         .hours-table tr:hover { background: ${accentLight}44; }
         .office-note {
           font-size: 10px;
-          color: #bbb;
+          color: var(--secondary-text-color, #bbb);
           margin-top: 10px;
           line-height: 1.5;
         }
@@ -1141,11 +1141,11 @@ class CatholicDailyCard extends HTMLElement {
 
         /* ── Footer ── */
         .footer {
-          background: transparent;
+          background: var(--secondary-background-color, transparent);
           padding: 8px 20px;
           text-align: center;
           font-size: 10px;
-          color: #bbb;
+          color: var(--secondary-text-color, #bbb);
           letter-spacing: 0.5px;
         }
 
