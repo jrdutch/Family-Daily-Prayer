@@ -716,13 +716,16 @@ function getMassReadings(date, liturgy) {
 
 // ─── Divine Office Helper ────────────────────────────────────────────────────
 
-function getDivineOffice(liturgy) {
+function getDivineOffice(date, liturgy) {
   const { season, week } = liturgy;
-  const url = 'https://divineoffice.org/';
-  let volume, seasonRef, psalterWeek;
-
-  // Psalter cycles weeks 1-4 within each season
   const psalterNums = ['I', 'II', 'III', 'IV'];
+  const daySlug = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][date.getDay()];
+  const isSunday = date.getDay() === 0;
+  const mm   = String(date.getMonth() + 1).padStart(2, '0');
+  const dd   = String(date.getDate()).padStart(2, '0');
+  const mmdd = mm + dd;
+
+  let volume, seasonRef, psalterWeek;
 
   switch (season) {
     case 'advent':
@@ -761,7 +764,32 @@ function getDivineOffice(liturgy) {
       psalterWeek = 'I';
   }
 
-  return { volume, seasonRef, psalterWeek, url };
+  // Build per-Hour deep links to divineoffice.org.
+  // URL pattern: /[season]-w[NN]-[day]-[suffix]/
+  // Fixed feast days use the date-based pattern: /MMDD-[suffix]/
+  const FIXED_MMDD = ['0101','0106','0815','1101','1108','1225'];
+  let base;
+  if (FIXED_MMDD.includes(mmdd) || season === 'feast') {
+    base = `https://divineoffice.org/${mmdd}`;
+  } else {
+    const weekStr = String(week).padStart(2, '0');
+    const seasonSlug = { advent: 'adv', christmas: 'chr', lent: 'lent',
+                         triduum: 'lent', easter: 'easter', ordinary: 'ord' }[season] || 'ord';
+    base = `https://divineoffice.org/${seasonSlug}-w${weekStr}-${daySlug}`;
+  }
+
+  const epSlug = isSunday ? 'ep2' : 'ep';
+  const npSlug = isSunday ? 'np1' : 'np';
+
+  const hours = [
+    { icon: '🌙', name: 'Office of Readings', latin: 'Officium Lectionis', url: `${base}-or/`   },
+    { icon: '🌅', name: 'Morning Prayer',      latin: 'Laudes',            url: `${base}-mp/`   },
+    { icon: '☀️', name: 'Midday Prayer',       latin: 'Hora Media',        url: `${base}-dp2/`  },
+    { icon: '🌇', name: 'Evening Prayer',      latin: 'Vesperae',          url: `${base}-${epSlug}/` },
+    { icon: '🌃', name: 'Night Prayer',        latin: 'Completorium',      url: `${base}-${npSlug}/` },
+  ];
+
+  return { volume, seasonRef, psalterWeek, hours };
 }
 
 // ─── Daily Prayer Selection ──────────────────────────────────────────────────
@@ -823,7 +851,7 @@ class CatholicDailyCard extends HTMLElement {
     const rosaryKey = DAY_TO_MYSTERY[now.getDay()];
     const rosary = ROSARY_MYSTERIES[rosaryKey];
     const prayer = getDailyPrayer(now, liturgy);
-    const office = getDivineOffice(liturgy);
+    const office = getDivineOffice(now, liturgy);
 
     const dayName = now.toLocaleDateString('en-US', { weekday: 'long' });
     const dateStr = now.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
@@ -1062,26 +1090,23 @@ class CatholicDailyCard extends HTMLElement {
           font-style: italic;
           font-size: 11px;
         }
-        .office-link {
-          margin-top: 12px;
-        }
-        .office-link a {
+        .hours-table .hour-link { text-align: right; padding-right: 0; }
+        .hours-table .hour-link a {
           color: ${accent};
           text-decoration: none;
-          font-size: 13px;
-          display: inline-flex;
-          align-items: center;
-          gap: 4px;
-          border: 1px solid ${accent};
-          padding: 4px 12px;
-          border-radius: 20px;
+          font-size: 12px;
+          border: 1px solid ${accent}44;
+          padding: 2px 8px;
+          border-radius: 10px;
+          white-space: nowrap;
         }
-        .office-link a:hover { background: ${accentLight}; }
+        .hours-table .hour-link a:hover { background: ${accentLight}; }
+        .hours-table tr:hover { background: ${accentLight}44; }
         .office-note {
           font-size: 10px;
           color: #bbb;
-          margin-top: 8px;
-          line-height: 1.4;
+          margin-top: 10px;
+          line-height: 1.5;
         }
 
         .cycle-badge {
@@ -1176,40 +1201,16 @@ class CatholicDailyCard extends HTMLElement {
           </div>
           ${office.psalterWeek ? `<div class="psalter-badge">Psalter Week ${office.psalterWeek}</div>` : ''}
           <table class="hours-table">
+            ${office.hours.map(h => `
             <tr>
-              <td class="hour-icon">🌙</td>
-              <td class="hour-name">Office of Readings</td>
-              <td class="hour-latin">Officium Lectionis</td>
-            </tr>
-            <tr>
-              <td class="hour-icon">🌅</td>
-              <td class="hour-name">Morning Prayer</td>
-              <td class="hour-latin">Laudes</td>
-            </tr>
-            <tr>
-              <td class="hour-icon">☀️</td>
-              <td class="hour-name">Midday Prayer</td>
-              <td class="hour-latin">Hora Media</td>
-            </tr>
-            <tr>
-              <td class="hour-icon">🌇</td>
-              <td class="hour-name">Evening Prayer</td>
-              <td class="hour-latin">Vespers</td>
-            </tr>
-            <tr>
-              <td class="hour-icon">🌃</td>
-              <td class="hour-name">Night Prayer</td>
-              <td class="hour-latin">Compline</td>
-            </tr>
+              <td class="hour-icon">${h.icon}</td>
+              <td class="hour-name">${h.name}</td>
+              <td class="hour-latin">${h.latin}</td>
+              <td class="hour-link"><a href="${h.url}" target="_blank" rel="noopener">Open →</a></td>
+            </tr>`).join('')}
           </table>
-          <div class="office-link">
-            <a href="${office.url}" target="_blank" rel="noopener">
-              Open divineoffice.org →
-            </a>
-          </div>
           <div class="office-note">
-            Use the Psalter Week tab in your book to locate each Hour.
-            Page numbers vary by edition.
+            Tap any Hour to open on divineoffice.org — page numbers for your 4-volume set are shown there.
           </div>
         </div>
 
