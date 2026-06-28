@@ -868,11 +868,11 @@ class CatholicDailyCard extends HTMLElement {
         :host { display: block; background: transparent; }
 
         .card {
-          background: var(--ha-card-background, rgba(255, 255, 255, 0.06));
+          background: rgba(255, 255, 255, 0.06);
           backdrop-filter: blur(20px);
           -webkit-backdrop-filter: blur(20px);
           border-radius: var(--ha-card-border-radius, 12px);
-          border: var(--ha-card-border-width, 1px) solid var(--ha-card-border-color, rgba(255, 255, 255, 0.18));
+          border: 1px solid rgba(255, 255, 255, 0.18);
           box-shadow: var(--ha-card-box-shadow, none);
           overflow: hidden;
           font-family: Georgia, 'Times New Roman', serif;
