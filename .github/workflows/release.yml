@@ -4,8 +4,12 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version number (e.g. 1.0.2)'
+        description: 'Version number (e.g. 1.0.5)'
         required: true
+        type: string
+      notes:
+        description: 'Release notes (what changed)'
+        required: false
         type: string
 
 jobs:
@@ -21,5 +25,5 @@ jobs:
         with:
           tag_name: ${{ github.event.inputs.version }}
           name: ${{ github.event.inputs.version }}
-          generate_release_notes: true
+          body: ${{ github.event.inputs.notes }}
           files: catholic-daily-card.js
