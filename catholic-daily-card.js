@@ -868,7 +868,11 @@ class CatholicDailyCard extends HTMLElement {
         :host { display: block; }
 
         .card {
-          background: transparent;
+          background: var(--ha-card-background, var(--card-background-color, transparent));
+          border-radius: var(--ha-card-border-radius, 12px);
+          border: var(--ha-card-border-width, 1px) solid var(--ha-card-border-color, var(--divider-color, rgba(0,0,0,0.12)));
+          box-shadow: var(--ha-card-box-shadow, none);
+          overflow: hidden;
           font-family: Georgia, 'Times New Roman', serif;
           color: var(--primary-text-color, #1a1a1a);
         }
@@ -1137,16 +1141,6 @@ class CatholicDailyCard extends HTMLElement {
           vertical-align: middle;
         }
 
-        /* ── Footer ── */
-        .footer {
-          background: transparent;
-          padding: 8px 20px;
-          text-align: center;
-          font-size: 10px;
-          color: var(--secondary-text-color, #bbb);
-          letter-spacing: 0.5px;
-        }
-
         /* ── Cross SVG ── */
         .cross-symbol {
           display: inline-block;
@@ -1208,7 +1202,7 @@ class CatholicDailyCard extends HTMLElement {
         <div class="section">
           <div class="section-header">
             <span class="section-header-icon">🕐</span>
-            Liturgy of the Hours (For Parents)
+            Liturgy of the Hours
           </div>
           <div class="office-header">
             <div class="office-volume">${office.volume}</div>
@@ -1232,10 +1226,6 @@ class CatholicDailyCard extends HTMLElement {
           </div>
         </div>
 
-        <!-- Footer -->
-        <div class="footer">
-          ✝ &nbsp; Ora et Labora &nbsp; ✝ &nbsp; Refreshes daily at midnight
-        </div>
 
       </div>
     `;
