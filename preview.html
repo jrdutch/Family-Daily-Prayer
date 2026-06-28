@@ -32,9 +32,8 @@
   <p class="note">Home Assistant Card Preview — refreshes daily at midnight</p>
   <catholic-daily-card></catholic-daily-card>
 </div>
-<script type="module" src="catholic-daily-card.js"></script>
+<script src="catholic-daily-card.js"></script>
 <script>
-  // Trigger setConfig so the card renders without hass
   customElements.whenDefined('catholic-daily-card').then(() => {
     document.querySelector('catholic-daily-card').setConfig({});
   });
