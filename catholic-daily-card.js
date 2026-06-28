@@ -719,41 +719,49 @@ function getMassReadings(date, liturgy) {
 function getDivineOffice(liturgy) {
   const { season, week } = liturgy;
   const url = 'https://divineoffice.org/';
-  let volume, location;
+  let volume, seasonRef, psalterWeek;
+
+  // Psalter cycles weeks 1-4 within each season
+  const psalterNums = ['I', 'II', 'III', 'IV'];
 
   switch (season) {
     case 'advent':
+      volume = 'Volume I';
+      seasonRef = `Advent, Week ${week}`;
+      psalterWeek = psalterNums[(week - 1) % 4];
+      break;
     case 'christmas':
       volume = 'Volume I';
-      location = season === 'advent'
-        ? `Week ${week} of Advent`
-        : 'Christmas Season';
+      seasonRef = 'Christmas Season';
+      psalterWeek = 'I';
       break;
     case 'lent':
+      volume = 'Volume II';
+      seasonRef = `Lent, Week ${week}`;
+      psalterWeek = psalterNums[(week - 1) % 4];
+      break;
     case 'triduum':
+      volume = 'Volume II';
+      seasonRef = 'Sacred Triduum';
+      psalterWeek = null;
+      break;
     case 'easter':
       volume = 'Volume II';
-      location = season === 'lent'
-        ? `Week ${week} of Lent`
-        : season === 'triduum'
-        ? 'Sacred Triduum'
-        : `Week ${week} of Easter`;
+      seasonRef = `Easter, Week ${week}`;
+      psalterWeek = psalterNums[(week - 1) % 4];
       break;
     case 'ordinary':
-      if (week <= 17) {
-        volume = 'Volume III';
-        location = `Week ${week} of Ordinary Time`;
-      } else {
-        volume = 'Volume IV';
-        location = `Week ${week} of Ordinary Time`;
-      }
+      volume = week <= 17 ? 'Volume III' : 'Volume IV';
+      seasonRef = `Ordinary Time, Week ${week}`;
+      psalterWeek = psalterNums[(week - 1) % 4];
       break;
     default:
       volume = 'Volume I';
-      location = 'Current week';
+      seasonRef = 'Current Week';
+      psalterWeek = 'I';
   }
 
-  return { volume, location, url };
+  return { volume, seasonRef, psalterWeek, url };
 }
 
 // ─── Daily Prayer Selection ──────────────────────────────────────────────────
@@ -938,42 +946,19 @@ class CatholicDailyCard extends HTMLElement {
         .weekday-note a { color: ${accent}; }
 
         /* ── Rosary ── */
-        .rosary-title {
-          font-size: 15px;
+        .rosary-mystery-name {
+          font-size: 20px;
           font-weight: bold;
-          color: #333;
-          margin-bottom: 8px;
+          color: ${accent};
+          text-align: center;
+          padding: 10px 0 4px;
+          letter-spacing: 0.5px;
         }
         .rosary-days {
           font-size: 11px;
           color: #999;
-          margin-bottom: 8px;
+          text-align: center;
           font-style: italic;
-        }
-        .mystery-list {
-          display: flex;
-          flex-direction: column;
-          gap: 4px;
-        }
-        .mystery-item {
-          display: flex;
-          align-items: flex-start;
-          gap: 8px;
-          font-size: 13px;
-          line-height: 1.4;
-        }
-        .mystery-num {
-          background: ${accent};
-          color: #fff;
-          border-radius: 50%;
-          width: 20px;
-          height: 20px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 11px;
-          flex-shrink: 0;
-          margin-top: 1px;
         }
 
         /* ── Prayer ── */
@@ -988,9 +973,33 @@ class CatholicDailyCard extends HTMLElement {
           color: #999;
           text-transform: uppercase;
           letter-spacing: 1px;
-          margin-bottom: 10px;
+        }
+        details.prayer-details { margin-top: 10px; }
+        details.prayer-details summary {
+          cursor: pointer;
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          color: ${accent};
+          font-size: 12px;
+          font-weight: bold;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+          list-style: none;
+          user-select: none;
+          padding: 4px 0;
+        }
+        details.prayer-details summary::-webkit-details-marker { display: none; }
+        details.prayer-details summary::before {
+          content: '▶';
+          font-size: 10px;
+          transition: transform 0.2s;
+        }
+        details.prayer-details[open] summary::before {
+          content: '▼';
         }
         .prayer-text {
+          margin-top: 10px;
           font-size: 13px;
           line-height: 1.9;
           color: #333;
@@ -1002,22 +1011,59 @@ class CatholicDailyCard extends HTMLElement {
         }
 
         /* ── Divine Office ── */
-        .office-row {
+        .office-header {
           display: flex;
-          flex-direction: column;
-          gap: 6px;
-          font-size: 13px;
+          justify-content: space-between;
+          align-items: baseline;
+          margin-bottom: 12px;
         }
         .office-volume {
           font-size: 16px;
           font-weight: bold;
           color: ${accent};
         }
-        .office-location {
-          color: #555;
+        .office-season {
+          font-size: 12px;
+          color: #888;
+          font-style: italic;
+        }
+        .psalter-badge {
+          display: inline-block;
+          background: ${accent};
+          color: #fff;
+          border-radius: 6px;
+          padding: 2px 10px;
+          font-size: 11px;
+          font-weight: bold;
+          letter-spacing: 0.5px;
+          margin-bottom: 10px;
+        }
+        .hours-table {
+          width: 100%;
+          border-collapse: collapse;
+          font-size: 13px;
+        }
+        .hours-table tr {
+          border-bottom: 1px solid #f0f0f0;
+        }
+        .hours-table tr:last-child { border-bottom: none; }
+        .hours-table td {
+          padding: 6px 4px;
+          vertical-align: middle;
+        }
+        .hours-table .hour-icon { width: 24px; font-size: 15px; }
+        .hours-table .hour-name {
+          color: #333;
+          font-weight: bold;
+          width: 130px;
+        }
+        .hours-table .hour-latin {
+          color: #999;
+          font-style: italic;
+          font-size: 11px;
         }
         .office-link {
-          margin-top: 4px;
+          margin-top: 12px;
         }
         .office-link a {
           color: ${accent};
@@ -1031,6 +1077,12 @@ class CatholicDailyCard extends HTMLElement {
           border-radius: 20px;
         }
         .office-link a:hover { background: ${accentLight}; }
+        .office-note {
+          font-size: 10px;
+          color: #bbb;
+          margin-top: 8px;
+          line-height: 1.4;
+        }
 
         .cycle-badge {
           display: inline-block;
@@ -1094,16 +1146,8 @@ class CatholicDailyCard extends HTMLElement {
             <span class="section-header-icon">📿</span>
             Mysteries of the Rosary
           </div>
-          <div class="rosary-title">${rosary.subtitle}</div>
+          <div class="rosary-mystery-name">📿 ${rosary.subtitle}</div>
           <div class="rosary-days">${rosary.days}</div>
-          <div class="mystery-list">
-            ${rosary.mysteries.map((m, i) => `
-              <div class="mystery-item">
-                <span class="mystery-num">${i + 1}</span>
-                <span>${m}</span>
-              </div>
-            `).join('')}
-          </div>
         </div>
 
         <!-- Children's Prayer -->
@@ -1114,7 +1158,10 @@ class CatholicDailyCard extends HTMLElement {
           </div>
           <div class="prayer-name">${prayer.name}</div>
           <div class="prayer-lang">${prayer.language}</div>
-          <div class="prayer-text">${this._escapeHtml(prayer.text)}</div>
+          <details class="prayer-details">
+            <summary>Show Prayer</summary>
+            <div class="prayer-text">${this._escapeHtml(prayer.text)}</div>
+          </details>
         </div>
 
         <!-- Divine Office -->
@@ -1123,14 +1170,46 @@ class CatholicDailyCard extends HTMLElement {
             <span class="section-header-icon">🕐</span>
             Liturgy of the Hours (For Parents)
           </div>
-          <div class="office-row">
+          <div class="office-header">
             <div class="office-volume">${office.volume}</div>
-            <div class="office-location">${office.location}</div>
-            <div class="office-link">
-              <a href="${office.url}" target="_blank" rel="noopener">
-                Open divineoffice.org →
-              </a>
-            </div>
+            <div class="office-season">${office.seasonRef}</div>
+          </div>
+          ${office.psalterWeek ? `<div class="psalter-badge">Psalter Week ${office.psalterWeek}</div>` : ''}
+          <table class="hours-table">
+            <tr>
+              <td class="hour-icon">🌙</td>
+              <td class="hour-name">Office of Readings</td>
+              <td class="hour-latin">Officium Lectionis</td>
+            </tr>
+            <tr>
+              <td class="hour-icon">🌅</td>
+              <td class="hour-name">Morning Prayer</td>
+              <td class="hour-latin">Laudes</td>
+            </tr>
+            <tr>
+              <td class="hour-icon">☀️</td>
+              <td class="hour-name">Midday Prayer</td>
+              <td class="hour-latin">Hora Media</td>
+            </tr>
+            <tr>
+              <td class="hour-icon">🌇</td>
+              <td class="hour-name">Evening Prayer</td>
+              <td class="hour-latin">Vespers</td>
+            </tr>
+            <tr>
+              <td class="hour-icon">🌃</td>
+              <td class="hour-name">Night Prayer</td>
+              <td class="hour-latin">Compline</td>
+            </tr>
+          </table>
+          <div class="office-link">
+            <a href="${office.url}" target="_blank" rel="noopener">
+              Open divineoffice.org →
+            </a>
+          </div>
+          <div class="office-note">
+            Use the Psalter Week tab in your book to locate each Hour.
+            Page numbers vary by edition.
           </div>
         </div>
 
