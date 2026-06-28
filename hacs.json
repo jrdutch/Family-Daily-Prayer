@@ -2,5 +2,6 @@
   "name": "Catholic Daily Prayer Card",
   "render_readme": true,
   "content_in_root": true,
-  "filename": "catholic-daily-card.js"
+  "filename": "catholic-daily-card.js",
+  "homeassistant": "2024.0.0"
 }

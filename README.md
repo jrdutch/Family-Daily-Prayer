@@ -15,10 +15,10 @@ A beautiful Home Assistant Lovelace custom card displaying daily Catholic spirit
 
 ### Via HACS (Recommended)
 
-1. In Home Assistant open **HACS → Frontend**.
+1. In Home Assistant open **HACS**.
 2. Click the three-dot menu (⋮) → **Custom repositories**.
-3. Add `https://github.com/jrdutch/Family-Daily-Prayer` with category **Lovelace**.
-4. Click **Install** on the *Catholic Daily Prayer Card* entry.
+3. Paste `https://github.com/jrdutch/Family-Daily-Prayer` and set category to **Dashboard**.
+4. Click **Add**, then find *Catholic Daily Prayer Card* and click **Download**.
 5. Reload your browser / clear the cache.
 6. Add the card to any dashboard:
    ```yaml
