@@ -1065,47 +1065,50 @@ class CatholicDailyCard extends HTMLElement {
           letter-spacing: 0.5px;
           margin-bottom: 10px;
         }
-        details.hour-details {
-          border-bottom: 1px solid #f0f0f0;
-        }
-        details.hour-details:last-of-type { border-bottom: none; }
-        details.hour-details summary {
+        details.hours-details { margin-top: 4px; }
+        details.hours-details summary {
           cursor: pointer;
-          display: flex;
+          display: inline-flex;
           align-items: center;
-          gap: 8px;
-          padding: 8px 4px;
+          gap: 6px;
+          color: ${accent};
+          font-size: 12px;
+          font-weight: bold;
+          text-transform: uppercase;
+          letter-spacing: 1px;
           list-style: none;
           user-select: none;
+          padding: 4px 0;
         }
-        details.hour-details summary::-webkit-details-marker { display: none; }
-        details.hour-details summary::before {
+        details.hours-details summary::-webkit-details-marker { display: none; }
+        details.hours-details summary::before {
           content: '▶';
-          font-size: 9px;
-          color: ${accent};
+          font-size: 10px;
           transition: transform 0.2s;
-          flex-shrink: 0;
         }
-        details.hour-details[open] summary::before { content: '▼'; }
-        .hour-icon { font-size: 15px; flex-shrink: 0; }
-        .hour-name {
+        details.hours-details[open] summary::before { content: '▼'; }
+        .hours-table {
+          width: 100%;
+          border-collapse: collapse;
+          font-size: 13px;
+          margin-top: 8px;
+        }
+        .hours-table tr { border-bottom: 1px solid #f0f0f0; }
+        .hours-table tr:last-child { border-bottom: none; }
+        .hours-table td { padding: 6px 4px; vertical-align: middle; }
+        .hours-table .hour-icon { width: 24px; font-size: 15px; }
+        .hours-table .hour-name {
           color: #333;
           font-weight: bold;
-          font-size: 13px;
-          flex: 1;
+          width: 130px;
         }
-        .hour-content {
-          padding: 6px 4px 12px 28px;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-        }
-        .hour-latin {
+        .hours-table .hour-latin {
           color: #999;
           font-style: italic;
           font-size: 11px;
         }
-        .hour-link a {
+        .hours-table .hour-link { text-align: right; padding-right: 0; }
+        .hours-table .hour-link a {
           color: ${accent};
           text-decoration: none;
           font-size: 12px;
@@ -1114,7 +1117,8 @@ class CatholicDailyCard extends HTMLElement {
           border-radius: 10px;
           white-space: nowrap;
         }
-        .hour-link a:hover { background: ${accentLight}; }
+        .hours-table .hour-link a:hover { background: ${accentLight}; }
+        .hours-table tr:hover { background: ${accentLight}44; }
         .office-note {
           font-size: 10px;
           color: #bbb;
@@ -1213,17 +1217,18 @@ class CatholicDailyCard extends HTMLElement {
             <div class="office-season">${office.seasonRef}</div>
           </div>
           ${office.psalterWeek ? `<div class="psalter-badge">Psalter Week ${office.psalterWeek}</div>` : ''}
-          ${office.hours.map(h => `
-          <details class="hour-details">
-            <summary>
-              <span class="hour-icon">${h.icon}</span>
-              <span class="hour-name">${h.name}</span>
-            </summary>
-            <div class="hour-content">
-              <span class="hour-latin">${h.latin}</span>
-              <span class="hour-link"><a href="${h.url}" target="_blank" rel="noopener">Open →</a></span>
-            </div>
-          </details>`).join('')}
+          <details class="hours-details">
+            <summary>Prayer Times</summary>
+            <table class="hours-table">
+              ${office.hours.map(h => `
+              <tr>
+                <td class="hour-icon">${h.icon}</td>
+                <td class="hour-name">${h.name}</td>
+                <td class="hour-latin">${h.latin}</td>
+                <td class="hour-link"><a href="${h.url}" target="_blank" rel="noopener">Open →</a></td>
+              </tr>`).join('')}
+            </table>
+          </details>
           <div class="office-note">
             Tap any Hour to open on divineoffice.org — page numbers for your 4-volume set are shown there.
           </div>
