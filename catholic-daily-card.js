@@ -853,36 +853,42 @@ class CatholicDailyCard extends HTMLElement {
 
   async _fetchRssReadings() {
     if (this._rssCache) return this._rssCache;
-    try {
-      const resp = await fetch('https://bible.usccb.org/readings.rss', { mode: 'cors' });
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      const text = await resp.text();
-      const xml = new DOMParser().parseFromString(text, 'text/xml');
-      const today = new Date();
-      const items = Array.from(xml.querySelectorAll('item'));
-      for (const item of items) {
-        const pubDate = item.querySelector('pubDate')?.textContent || '';
-        const title = item.querySelector('title')?.textContent || '';
-        const link = (item.querySelector('link')?.nextSibling?.textContent || item.querySelector('link')?.textContent || '').trim();
-        const desc = item.querySelector('description')?.textContent || '';
-        const itemDate = new Date(pubDate);
-        const sameDay = itemDate.toDateString() === today.toDateString()
-          || title.includes(today.toLocaleDateString('en-US', { month: 'long', day: 'numeric' }));
-        if (!sameDay) continue;
-        const doc = new DOMParser().parseFromString(desc, 'text/html');
-        return this._parseRssItem(doc, title, link);
+    const RSS_URL = 'https://bible.usccb.org/readings.rss';
+    const PROXY = `https://corsproxy.io/?url=${encodeURIComponent(RSS_URL)}`;
+
+    for (const url of [RSS_URL, PROXY]) {
+      try {
+        const resp = await fetch(url, { mode: 'cors' });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const text = await resp.text();
+        const xml = new DOMParser().parseFromString(text, 'text/xml');
+        const today = new Date();
+        const items = Array.from(xml.querySelectorAll('item'));
+        for (const item of items) {
+          const pubDate = item.querySelector('pubDate')?.textContent || '';
+          const title = item.querySelector('title')?.textContent || '';
+          const link = (item.querySelector('link')?.nextSibling?.textContent || item.querySelector('link')?.textContent || '').trim();
+          const desc = item.querySelector('description')?.textContent || '';
+          const itemDate = new Date(pubDate);
+          const sameDay = itemDate.toDateString() === today.toDateString()
+            || title.includes(today.toLocaleDateString('en-US', { month: 'long', day: 'numeric' }));
+          if (!sameDay) continue;
+          const doc = new DOMParser().parseFromString(desc, 'text/html');
+          const parsed = this._parseRssItem(doc, title, link);
+          if (parsed) return parsed;
+        }
+      } catch (e) {
+        console.warn(`CatholicDailyCard: fetch failed (${url}) —`, e.message);
       }
-    } catch (e) {
-      console.warn('CatholicDailyCard: RSS fetch failed —', e.message);
     }
     return null;
   }
 
   _parseRssItem(doc, rawTitle, link) {
-    // Extract feast name from title (strip date prefix "Month DD, YYYY — Feast")
     const titleText = rawTitle.replace(/^[A-Z][a-z]+ \d{1,2},?\s*\d{4}\s*[-–—]?\s*/i, '').trim();
+    const bodyText = (doc.body?.innerText || doc.body?.textContent || '').replace(/\s+/g, ' ');
+    console.debug('CatholicDailyCard RSS body:', bodyText);
 
-    const bodyText = doc.body?.innerText || doc.body?.textContent || '';
     const result = { label: titleText || null, link };
 
     const extract = (pattern) => {
@@ -890,12 +896,14 @@ class CatholicDailyCard extends HTMLElement {
       return m ? m[1].trim() : null;
     };
 
-    result.first  = extract(/First\s+Reading[:\s]+([^\n]+)/i);
-    result.psalm  = extract(/(?:Responsorial\s+)?Psalm[:\s]+([^\n]+)/i);
-    result.second = extract(/Second\s+Reading[:\s]+([^\n]+)/i);
-    result.gospel = extract(/Gospel[:\s]+([^\n]+)/i);
+    result.first  = extract(/First\s+Reading[:\s]+([^;]+?)(?=\s*(?:Psalm|Second|Gospel|$))/i)
+                 || extract(/Reading\s+I+[:\s]+([^;]+?)(?=\s*(?:Psalm|Reading II|Gospel|$))/i);
+    result.psalm  = extract(/(?:Responsorial\s+)?Psalm[:\s]+([^;]+?)(?=\s*(?:Second|Gospel|$))/i);
+    result.second = extract(/Second\s+Reading[:\s]+([^;]+?)(?=\s*Gospel)/i)
+                 || extract(/Reading\s+II[:\s]+([^;]+?)(?=\s*Gospel)/i);
+    result.gospel = extract(/Gospel[:\s]+([^;]+?)(?=\s*$)/i)
+                 || extract(/Gospel[:\s]+(.+)/i);
 
-    // If parsing found at least a gospel, treat as valid
     return result.gospel ? result : null;
   }
 
