@@ -45,54 +45,25 @@ A beautiful Home Assistant Lovelace custom card displaying daily Catholic spirit
 
 By default the card shows Sunday readings from its built-in lectionary and a link to USCCB for weekdays. To display live reading citations every day (including weekdays), add a sensor that fetches the USCCB RSS feed server-side.
 
-**Step 1** — Create the file `config/usccb_readings.py` in your Home Assistant config directory with this content:
-
-```python
-import urllib.request, xml.etree.ElementTree as ET, json, html, re, sys
-
-try:
-    rss = urllib.request.urlopen("https://bible.usccb.org/readings.rss", timeout=10).read()
-    root = ET.fromstring(rss)
-    item = root.find(".//item")
-    title = item.findtext("title") or ""
-    link = item.findtext("link") or ""
-    desc = html.unescape(item.findtext("description") or "")
-    desc = re.sub(r"<[^>]+>", " ", desc)
-    desc = re.sub(r"\s+", " ", desc).strip()
-    label = re.sub(r"^[A-Za-z]+ \d+,?\s*\d{4}\s*[-–—]?\s*", "", title).strip()
-    def ex(p):
-        m = re.search(p, desc, re.I)
-        return m.group(1).strip() if m else ""
-    first  = ex(r"First Reading[:\s]+([^;]+?)(?=\s*(?:Psalm|Second|Gospel|$))")
-    psalm  = ex(r"(?:Responsorial )?Psalm[:\s]+([^;]+?)(?=\s*(?:Second|Gospel|$))")
-    second = ex(r"Second Reading[:\s]+([^;]+?)(?=\s*Gospel)")
-    gospel = ex(r"Gospel[:\s]+(.+)")
-    print(json.dumps({"label": label, "first": first, "psalm": psalm,
-                      "second": second, "gospel": gospel, "link": link}))
-except Exception as e:
-    print(json.dumps({"error": str(e)}))
-```
-
-**Step 2** — Add this to your `configuration.yaml` and do a **full HA restart** (not just reload):
+Add the following to your `configuration.yaml` and do a **full HA restart**:
 
 ```yaml
-command_line:
-  - sensor:
-      name: usccb_daily_readings
-      unique_id: usccb_daily_readings
-      scan_interval: 3600
-      command: "python3 /config/usccb_readings.py"
-      value_template: "{{ value_json.gospel | default('') }}"
-      json_attributes:
-        - label
-        - first
-        - psalm
-        - second
-        - gospel
-        - link
+rest:
+  - resource: "https://api.rss2json.com/v1/api.json?rss_url=https%3A%2F%2Fbible.usccb.org%2Freadings.rss"
+    scan_interval: 3600
+    sensor:
+      - name: "usccb_daily_readings"
+        unique_id: usccb_daily_readings
+        value_template: "{{ value_json.items[0].title }}"
+        json_attributes_path: "$.items[0]"
+        json_attributes:
+          - title
+          - pubDate
+          - link
+          - description
 ```
 
-**Step 3** — After restart, go to **Developer Tools → States** and search for `usccb`. The sensor should appear with today's gospel as its state. Once it does, the card will automatically display the reading citations.
+After restart, go to **Developer Tools → States** and search for `usccb`. The sensor should appear with today's feast/day as its state and a `description` attribute containing the readings. Once it does, the card will automatically display the reading citations.
 
 Once the sensor is active, the card will automatically detect it and display reading citations for every day of the week.
 

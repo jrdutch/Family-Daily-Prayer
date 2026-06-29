@@ -841,17 +841,45 @@ class CatholicDailyCard extends HTMLElement {
 
   _getReadingsFromHass() {
     const sensor = this._hass?.states?.['sensor.usccb_daily_readings'];
-    if (!sensor || sensor.state === 'unavailable') return null;
+    if (!sensor || sensor.state === 'unavailable' || sensor.state === 'unknown') return null;
     const a = sensor.attributes;
-    if (!a.gospel) return null;
-    return {
-      label:  a.label  || null,
-      first:  a.first  || null,
-      psalm:  a.psalm  || null,
-      second: a.second || null,
-      gospel: a.gospel,
-      link:   a.link   || 'https://bible.usccb.org/bible/readings',
-    };
+
+    // Format A: pre-parsed fields (command_line sensor)
+    if (a.gospel) {
+      return {
+        label:  a.label  || null,
+        first:  a.first  || null,
+        psalm:  a.psalm  || null,
+        second: a.second || null,
+        gospel: a.gospel,
+        link:   a.link   || 'https://bible.usccb.org/bible/readings',
+      };
+    }
+
+    // Format B: rss2json.com (rest sensor) — description contains HTML with citations
+    if (a.description) {
+      const rawTitle = a.title || sensor.state || '';
+      const link = a.link || 'https://bible.usccb.org/bible/readings';
+      const doc = new DOMParser().parseFromString(a.description, 'text/html');
+      return this._parseRssItem(doc, rawTitle, link);
+    }
+
+    return null;
+  }
+
+  _parseRssItem(doc, rawTitle, link) {
+    const titleText = rawTitle.replace(/^[A-Z][a-z]+ \d{1,2},?\s*\d{4}\s*[-–—]?\s*/i, '').trim();
+    const bodyText = (doc.body?.innerText || doc.body?.textContent || '').replace(/\s+/g, ' ');
+
+    const result = { label: titleText || null, link };
+    const ex = (p) => { const m = bodyText.match(p); return m ? m[1].trim() : null; };
+
+    result.first  = ex(/First\s+Reading[:\s]+([^;]+?)(?=\s*(?:Psalm|Second|Gospel|$))/i);
+    result.psalm  = ex(/(?:Responsorial\s+)?Psalm[:\s]+([^;]+?)(?=\s*(?:Second|Gospel|$))/i);
+    result.second = ex(/Second\s+Reading[:\s]+([^;]+?)(?=\s*Gospel)/i);
+    result.gospel = ex(/Gospel[:\s]+([^;]+?)(?=\s*(?:Alleluia|Sequence|$))/i) || ex(/Gospel[:\s]+(.+)/i);
+
+    return result.gospel ? result : null;
   }
 
   _tryRender() {
