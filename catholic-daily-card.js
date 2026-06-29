@@ -824,8 +824,8 @@ class CatholicDailyCard extends HTMLElement {
   }
 
   connectedCallback() {
-    this._tryRender();
     this._scheduleRefresh();
+    this._loadRssAndRender();
   }
 
   _scheduleRefresh() {
@@ -833,9 +833,70 @@ class CatholicDailyCard extends HTMLElement {
     const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
     setTimeout(() => {
       this._lastDate = null;
-      this._tryRender();
+      this._rssCache = null;
+      this._loadRssAndRender();
       this._scheduleRefresh();
     }, midnight - now);
+  }
+
+  async _loadRssAndRender() {
+    // Render immediately with local/cached data
+    this._tryRender();
+    // Then fetch RSS and re-render if we got new data
+    const rss = await this._fetchRssReadings();
+    if (rss) {
+      this._rssCache = rss;
+      this._lastDate = null;
+      this._tryRender();
+    }
+  }
+
+  async _fetchRssReadings() {
+    if (this._rssCache) return this._rssCache;
+    try {
+      const resp = await fetch('https://bible.usccb.org/readings.rss', { mode: 'cors' });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const text = await resp.text();
+      const xml = new DOMParser().parseFromString(text, 'text/xml');
+      const today = new Date();
+      const items = Array.from(xml.querySelectorAll('item'));
+      for (const item of items) {
+        const pubDate = item.querySelector('pubDate')?.textContent || '';
+        const title = item.querySelector('title')?.textContent || '';
+        const link = (item.querySelector('link')?.nextSibling?.textContent || item.querySelector('link')?.textContent || '').trim();
+        const desc = item.querySelector('description')?.textContent || '';
+        const itemDate = new Date(pubDate);
+        const sameDay = itemDate.toDateString() === today.toDateString()
+          || title.includes(today.toLocaleDateString('en-US', { month: 'long', day: 'numeric' }));
+        if (!sameDay) continue;
+        const doc = new DOMParser().parseFromString(desc, 'text/html');
+        return this._parseRssItem(doc, title, link);
+      }
+    } catch (e) {
+      console.warn('CatholicDailyCard: RSS fetch failed —', e.message);
+    }
+    return null;
+  }
+
+  _parseRssItem(doc, rawTitle, link) {
+    // Extract feast name from title (strip date prefix "Month DD, YYYY — Feast")
+    const titleText = rawTitle.replace(/^[A-Z][a-z]+ \d{1,2},?\s*\d{4}\s*[-–—]?\s*/i, '').trim();
+
+    const bodyText = doc.body?.innerText || doc.body?.textContent || '';
+    const result = { label: titleText || null, link };
+
+    const extract = (pattern) => {
+      const m = bodyText.match(pattern);
+      return m ? m[1].trim() : null;
+    };
+
+    result.first  = extract(/First\s+Reading[:\s]+([^\n]+)/i);
+    result.psalm  = extract(/(?:Responsorial\s+)?Psalm[:\s]+([^\n]+)/i);
+    result.second = extract(/Second\s+Reading[:\s]+([^\n]+)/i);
+    result.gospel = extract(/Gospel[:\s]+([^\n]+)/i);
+
+    // If parsing found at least a gospel, treat as valid
+    return result.gospel ? result : null;
   }
 
   _tryRender() {
@@ -847,7 +908,7 @@ class CatholicDailyCard extends HTMLElement {
 
   _render(now) {
     const liturgy = getLiturgicalInfo(now);
-    const readings = getMassReadings(now, liturgy);
+    const readings = this._rssCache || getMassReadings(now, liturgy);
     const rosaryKey = DAY_TO_MYSTERY[now.getDay()];
     const rosary = ROSARY_MYSTERIES[rosaryKey];
     const prayer = getDailyPrayer(now, liturgy);
@@ -969,6 +1030,16 @@ class CatholicDailyCard extends HTMLElement {
           font-weight: bold;
           margin-bottom: 8px;
         }
+        .reading-usccb {
+          margin-top: 10px;
+          font-size: 12px;
+        }
+        .reading-usccb a {
+          color: ${accent};
+          text-decoration: none;
+          opacity: 0.85;
+        }
+        .reading-usccb a:hover { opacity: 1; text-decoration: underline; }
         .weekday-note {
           font-size: 13px;
           color: var(--primary-text-color, #555);
@@ -1234,8 +1305,8 @@ class CatholicDailyCard extends HTMLElement {
   }
 
   _buildReadingsHtml(readings, date, liturgy) {
-    const isSunday = date.getDay() === 0;
-    const { cycle, weekdayCycle, week, season } = liturgy;
+    const { weekdayCycle, week, season } = liturgy;
+    const usccbLink = readings?.link || 'https://bible.usccb.org/bible/readings';
 
     if (readings && readings.first) {
       const feat = readings.label ? `<div class="reading-feat">${readings.label}</div>` : '';
@@ -1257,6 +1328,9 @@ class CatholicDailyCard extends HTMLElement {
           <span class="reading-label">Gospel</span>
           <span class="reading-ref">${readings.gospel}</span>
         </div>
+        <div class="reading-usccb">
+          <a href="${usccbLink}" target="_blank" rel="noopener">Read full text at usccb.org →</a>
+        </div>
       `;
     }
 
@@ -1268,14 +1342,13 @@ class CatholicDailyCard extends HTMLElement {
       </div>`;
     }
 
-    // Weekday or unmatched Sunday
+    // Weekday — RSS not available yet or failed
     const seasonLabel = liturgy.seasonLabel || 'Ordinary Time';
     return `<div class="weekday-note">
       <strong>Weekday — Lectionary Cycle ${weekdayCycle}</strong><br>
       ${seasonLabel}, Week ${week}<br><br>
-      For today's weekday readings, visit:<br>
       <a href="https://bible.usccb.org/bible/readings" target="_blank" rel="noopener">
-        bible.usccb.org/bible/readings
+        Read today's readings at usccb.org →
       </a>
     </div>`;
   }
