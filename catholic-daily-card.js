@@ -825,7 +825,7 @@ class CatholicDailyCard extends HTMLElement {
 
   connectedCallback() {
     this._scheduleRefresh();
-    this._loadRssAndRender();
+    this._tryRender();
   }
 
   _scheduleRefresh() {
@@ -839,84 +839,34 @@ class CatholicDailyCard extends HTMLElement {
     }, midnight - now);
   }
 
-  async _loadRssAndRender() {
-    // Render immediately with local/cached data
-    this._tryRender();
-    // Then fetch RSS and re-render if we got new data
-    const rss = await this._fetchRssReadings();
-    if (rss) {
-      this._rssCache = rss;
-      this._lastDate = null;
-      this._tryRender();
-    }
-  }
-
-  async _fetchRssReadings() {
-    if (this._rssCache) return this._rssCache;
-    const RSS_URL = 'https://bible.usccb.org/readings.rss';
-    const PROXY = `https://corsproxy.io/?url=${encodeURIComponent(RSS_URL)}`;
-
-    for (const url of [RSS_URL, PROXY]) {
-      try {
-        const resp = await fetch(url, { mode: 'cors' });
-        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-        const text = await resp.text();
-        const xml = new DOMParser().parseFromString(text, 'text/xml');
-        const today = new Date();
-        const items = Array.from(xml.querySelectorAll('item'));
-        for (const item of items) {
-          const pubDate = item.querySelector('pubDate')?.textContent || '';
-          const title = item.querySelector('title')?.textContent || '';
-          const link = (item.querySelector('link')?.nextSibling?.textContent || item.querySelector('link')?.textContent || '').trim();
-          const desc = item.querySelector('description')?.textContent || '';
-          const itemDate = new Date(pubDate);
-          const sameDay = itemDate.toDateString() === today.toDateString()
-            || title.includes(today.toLocaleDateString('en-US', { month: 'long', day: 'numeric' }));
-          if (!sameDay) continue;
-          const doc = new DOMParser().parseFromString(desc, 'text/html');
-          const parsed = this._parseRssItem(doc, title, link);
-          if (parsed) return parsed;
-        }
-      } catch (e) {
-        console.warn(`CatholicDailyCard: fetch failed (${url}) —`, e.message);
-      }
-    }
-    return null;
-  }
-
-  _parseRssItem(doc, rawTitle, link) {
-    const titleText = rawTitle.replace(/^[A-Z][a-z]+ \d{1,2},?\s*\d{4}\s*[-–—]?\s*/i, '').trim();
-    const bodyText = (doc.body?.innerText || doc.body?.textContent || '').replace(/\s+/g, ' ');
-    console.debug('CatholicDailyCard RSS body:', bodyText);
-
-    const result = { label: titleText || null, link };
-
-    const extract = (pattern) => {
-      const m = bodyText.match(pattern);
-      return m ? m[1].trim() : null;
+  _getReadingsFromHass() {
+    const sensor = this._hass?.states?.['sensor.usccb_daily_readings'];
+    if (!sensor || sensor.state === 'unavailable') return null;
+    const a = sensor.attributes;
+    if (!a.gospel) return null;
+    return {
+      label:  a.label  || null,
+      first:  a.first  || null,
+      psalm:  a.psalm  || null,
+      second: a.second || null,
+      gospel: a.gospel,
+      link:   a.link   || 'https://bible.usccb.org/bible/readings',
     };
-
-    result.first  = extract(/First\s+Reading[:\s]+([^;]+?)(?=\s*(?:Psalm|Second|Gospel|$))/i)
-                 || extract(/Reading\s+I+[:\s]+([^;]+?)(?=\s*(?:Psalm|Reading II|Gospel|$))/i);
-    result.psalm  = extract(/(?:Responsorial\s+)?Psalm[:\s]+([^;]+?)(?=\s*(?:Second|Gospel|$))/i);
-    result.second = extract(/Second\s+Reading[:\s]+([^;]+?)(?=\s*Gospel)/i)
-                 || extract(/Reading\s+II[:\s]+([^;]+?)(?=\s*Gospel)/i);
-    result.gospel = extract(/Gospel[:\s]+([^;]+?)(?=\s*$)/i)
-                 || extract(/Gospel[:\s]+(.+)/i);
-
-    return result.gospel ? result : null;
   }
 
   _tryRender() {
     const today = new Date().toDateString();
-    if (today === this._lastDate) return;
+    const hassReadings = this._getReadingsFromHass();
+    // Re-render if date changed OR if hass sensor data just became available
+    if (today === this._lastDate && !hassReadings !== !this._lastHassReadings) return;
     this._lastDate = today;
+    this._lastHassReadings = hassReadings;
     this._render(new Date());
   }
 
   _render(now) {
     const liturgy = getLiturgicalInfo(now);
-    const readings = this._rssCache || getMassReadings(now, liturgy);
+    const readings = this._getReadingsFromHass() || getMassReadings(now, liturgy);
     const rosaryKey = DAY_TO_MYSTERY[now.getDay()];
     const rosary = ROSARY_MYSTERIES[rosaryKey];
     const prayer = getDailyPrayer(now, liturgy);
