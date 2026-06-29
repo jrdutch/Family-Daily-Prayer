@@ -841,6 +841,7 @@ class CatholicDailyCard extends HTMLElement {
 
   _getReadingsFromHass() {
     const sensor = this._hass?.states?.['sensor.usccb_daily_readings'];
+    console.log('CatholicDailyCard: sensor state =', sensor?.state, '| attrs =', Object.keys(sensor?.attributes || {}).join(', '));
     if (!sensor || sensor.state === 'unavailable' || sensor.state === 'unknown') return null;
     const a = sensor.attributes;
 
