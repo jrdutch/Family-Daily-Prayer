@@ -857,8 +857,8 @@ class CatholicDailyCard extends HTMLElement {
   _tryRender() {
     const today = new Date().toDateString();
     const hassReadings = this._getReadingsFromHass();
-    // Re-render if date changed OR if hass sensor data just became available
-    if (today === this._lastDate && !hassReadings !== !this._lastHassReadings) return;
+    const readingsChanged = !!hassReadings !== !!this._lastHassReadings;
+    if (today === this._lastDate && !readingsChanged) return;
     this._lastDate = today;
     this._lastHassReadings = hassReadings;
     this._render(new Date());
