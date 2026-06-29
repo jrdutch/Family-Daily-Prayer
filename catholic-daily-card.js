@@ -856,12 +856,24 @@ class CatholicDailyCard extends HTMLElement {
       };
     }
 
-    // Format B: rss2json.com (rest sensor) — description contains HTML with citations
+    // Format B: rss2json.com (rest sensor) — description contains full HTML with <h4> headings
     if (a.description) {
-      const rawTitle = a.title || sensor.state || '';
-      const link = a.link || 'https://bible.usccb.org/bible/readings';
       const doc = new DOMParser().parseFromString(a.description, 'text/html');
-      return this._parseRssItem(doc, rawTitle, link);
+      const link = a.link || 'https://bible.usccb.org/bible/readings';
+      const label = (a.title || sensor.state || '').replace(/^[A-Z][a-z]+ \d{1,2},?\s*\d{4}\s*[-–—]?\s*/i, '').trim() || null;
+      const result = { label, link };
+
+      for (const h4 of doc.querySelectorAll('h4')) {
+        const heading = h4.textContent.trim();
+        const citation = h4.querySelector('a')?.textContent?.trim() || '';
+        if (!citation) continue;
+        if (/^Reading I(?!I)/i.test(heading))        result.first  = citation;
+        else if (/Responsorial\s+Psalm/i.test(heading)) result.psalm  = citation;
+        else if (/^Reading II/i.test(heading))        result.second = citation;
+        else if (/^Gospel/i.test(heading))            result.gospel = citation;
+      }
+
+      return result.gospel ? result : null;
     }
 
     return null;
