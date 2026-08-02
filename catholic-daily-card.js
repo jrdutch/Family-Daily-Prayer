@@ -864,17 +864,243 @@ class CatholicDailyCard extends HTMLElement {
     this.shadowRoot.innerHTML = `
       <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-        :host { display: block; }
+        :host { display: block; background: transparent; }
 
         .card {
-          background: #ffffff;
-          border-radius: 16px;
+          background: rgba(255,255,255,0.08);
+          backdrop-filter: blur(20px);
+          -webkit-backdrop-filter: blur(20px);
+          border-radius: 20px;
+          border: 1px solid rgba(255,255,255,0.2);
           overflow: hidden;
-          font-family: Georgia, 'Times New Roman', serif;
-          color: #1a1a1a;
-          box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+          color: var(--primary-text-color, #1a1a1a);
+          box-shadow: 0 8px 32px rgba(0,0,0,0.12);
         }
+
+        /* ── Header ── */
+        .header {
+          background: linear-gradient(135deg, ${accent} 0%, ${accent}aa 100%);
+          color: #fff;
+          padding: 22px 24px 18px;
+          text-align: center;
+        }
+        .header-icon { font-size: 30px; margin-bottom: 6px; }
+        .header-title {
+          font-size: 22px;
+          font-weight: 800;
+          letter-spacing: 4px;
+          text-transform: uppercase;
+        }
+        .header-date {
+          font-size: 13px;
+          opacity: 0.88;
+          margin-top: 5px;
+          font-style: italic;
+          font-weight: 300;
+        }
+
+        /* ── Season Bar ── */
+        .season-bar {
+          background: linear-gradient(90deg, ${accent}2a, transparent);
+          border-left: 4px solid ${accent};
+          padding: 10px 18px;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          font-size: 12px;
+          font-weight: 800;
+          color: ${accent};
+          text-transform: uppercase;
+          letter-spacing: 1.5px;
+        }
+        .cycle-badge {
+          background: ${accent};
+          color: #fff;
+          border-radius: 20px;
+          padding: 2px 10px;
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.5px;
+        }
+
+        /* ── Section ── */
+        .section {
+          padding: 16px 18px;
+          border-bottom: 1px solid rgba(128,128,128,0.15);
+        }
+        .section:last-child { border-bottom: none; }
+
+        .section-header {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          margin-bottom: 14px;
+          color: ${accent};
+          font-size: 11px;
+          font-weight: 800;
+          text-transform: uppercase;
+          letter-spacing: 2px;
+        }
+
+        /* ── Readings ── */
+        .reading-feat {
+          font-size: 13px;
+          color: ${accent};
+          font-weight: 700;
+          margin-bottom: 12px;
+          padding: 7px 12px;
+          background: ${accent}18;
+          border-radius: 8px;
+          border-left: 3px solid ${accent};
+        }
+        .reading-row {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          margin-bottom: 8px;
+          padding: 9px 12px;
+          background: rgba(255,255,255,0.07);
+          border-radius: 10px;
+          border: 1px solid rgba(128,128,128,0.12);
+        }
+        .reading-label {
+          background: ${accent};
+          color: #fff;
+          border-radius: 5px;
+          padding: 3px 9px;
+          font-size: 10px;
+          font-weight: 800;
+          text-transform: uppercase;
+          letter-spacing: 0.4px;
+          white-space: nowrap;
+          flex-shrink: 0;
+          min-width: 82px;
+          text-align: center;
+        }
+        .reading-ref {
+          font-style: italic;
+          font-size: 14px;
+          font-weight: 500;
+        }
+        .reading-usccb {
+          margin-top: 10px;
+          text-align: right;
+          font-size: 12px;
+        }
+        .reading-usccb a { color: ${accent}; text-decoration: none; opacity: 0.8; }
+        .reading-usccb a:hover { opacity: 1; text-decoration: underline; }
+        .weekday-note { font-size: 13px; line-height: 1.6; }
+        .weekday-note a { color: ${accent}; }
+
+        /* ── Rosary ── */
+        .rosary-wrap {
+          text-align: center;
+          padding: 6px 0;
+        }
+        .rosary-mystery-name {
+          font-size: 21px;
+          font-weight: 700;
+          color: ${accent};
+          font-family: Georgia, serif;
+          margin-bottom: 4px;
+        }
+        .rosary-days {
+          font-size: 11px;
+          color: var(--secondary-text-color, #999);
+          font-style: italic;
+        }
+
+        /* ── Prayer ── */
+        .prayer-name {
+          font-size: 17px;
+          font-weight: 700;
+          font-family: Georgia, serif;
+          margin-bottom: 2px;
+        }
+        .prayer-lang {
+          font-size: 10px;
+          color: var(--secondary-text-color, #999);
+          text-transform: uppercase;
+          letter-spacing: 1px;
+        }
+        details.prayer-details { margin-top: 10px; }
+        details.prayer-details summary {
+          cursor: pointer;
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          color: ${accent};
+          font-size: 12px;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+          list-style: none;
+          user-select: none;
+          padding: 4px 0;
+        }
+        details.prayer-details summary::-webkit-details-marker { display: none; }
+        details.prayer-details summary::before { content: '▶'; font-size: 10px; }
+        details.prayer-details[open] summary::before { content: '▼'; }
+        .prayer-text {
+          margin-top: 10px;
+          font-size: 13px;
+          line-height: 1.9;
+          white-space: pre-wrap;
+          background: ${accent}11;
+          padding: 14px 16px;
+          border-radius: 10px;
+          border-left: 3px solid ${accent};
+          font-family: Georgia, serif;
+        }
+      </style>
+
+      <div class="card">
+
+        <div class="header">
+          <div class="header-icon">🙏</div>
+          <div class="header-title">Daily Prayer</div>
+          <div class="header-date">${dayName}, ${dateStr}</div>
+        </div>
+
+        <div class="season-bar">
+          <span>${this._seasonIcon(liturgy.season)}</span>
+          <span>${liturgy.seasonLabel}</span>
+          <span class="cycle-badge">Year ${liturgy.cycle}</span>
+        </div>
+
+        <div class="section">
+          <div class="section-header">
+            <span>📖</span> Daily Mass Readings
+          </div>
+          ${readingsHtml}
+        </div>
+
+        <div class="section">
+          <div class="section-header">
+            <span>📿</span> Mysteries of the Rosary
+          </div>
+          <div class="rosary-wrap">
+            <div class="rosary-mystery-name">${rosary.subtitle}</div>
+            <div class="rosary-days">${rosary.days}</div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-header">
+            <span>🙏</span> Prayer for Little Ones
+          </div>
+          <div class="prayer-name">${prayer.name}</div>
+          <div class="prayer-lang">${prayer.language}</div>
+          <details class="prayer-details">
+            <summary>Show Prayer</summary>
+            <div class="prayer-text">${this._escapeHtml(prayer.text)}</div>
+          </details>
+        </div>
+
+      </div>
+    `;
+  }
 
         /* ── Header ── */
         .header {
