@@ -847,11 +847,13 @@ class CatholicDailyCard extends HTMLElement {
 
   _render(now) {
     const liturgy = getLiturgicalInfo(now);
-    const readings = getMassReadings(now, liturgy);
+    const hassReadings = this._getReadingsFromHass ? this._getReadingsFromHass() : null;
+    const readings = hassReadings || getMassReadings(now, liturgy);
     const rosaryKey = DAY_TO_MYSTERY[now.getDay()];
     const rosary = ROSARY_MYSTERIES[rosaryKey];
     const prayer = getDailyPrayer(now, liturgy);
     const office = getDivineOffice(now, liturgy);
+    const verse = getDailyVerse(now);
 
     const dayName = now.toLocaleDateString('en-US', { weekday: 'long' });
     const dateStr = now.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
@@ -859,7 +861,8 @@ class CatholicDailyCard extends HTMLElement {
     const accent = liturgy.color;
     const accentLight = accent + '22'; // ~13% opacity hex
 
-    const readingsHtml = this._buildReadingsHtml(readings, now, liturgy);
+    const readingsLink = (readings && readings.link) || 'https://bible.usccb.org/bible/readings';
+    const readingsHtml = this._buildReadingsHtml(readings, now, liturgy, readingsLink);
 
     this.shadowRoot.innerHTML = `
       <style>
@@ -923,24 +926,68 @@ class CatholicDailyCard extends HTMLElement {
           letter-spacing: 0.5px;
         }
 
+        /* ── Scripture Verse ── */
+        .verse-bar {
+          padding: 12px 18px;
+          background: ${accent}10;
+          border-bottom: 1px solid rgba(128,128,128,0.15);
+          text-align: center;
+        }
+        .verse-text {
+          font-size: 13px;
+          font-style: italic;
+          font-family: Georgia, serif;
+          line-height: 1.6;
+          color: var(--primary-text-color, #1a1a1a);
+          margin-bottom: 4px;
+        }
+        .verse-ref {
+          font-size: 11px;
+          font-weight: 700;
+          color: ${accent};
+          text-transform: uppercase;
+          letter-spacing: 1px;
+        }
+
         /* ── Section ── */
         .section {
-          padding: 16px 18px;
+          padding: 0;
           border-bottom: 1px solid rgba(128,128,128,0.15);
         }
         .section:last-child { border-bottom: none; }
 
-        .section-header {
+        .section-toggle {
+          width: 100%;
+          background: none;
+          border: none;
+          cursor: pointer;
           display: flex;
           align-items: center;
-          gap: 8px;
-          margin-bottom: 14px;
+          justify-content: space-between;
+          padding: 14px 18px;
           color: ${accent};
           font-size: 11px;
           font-weight: 800;
           text-transform: uppercase;
           letter-spacing: 2px;
+          font-family: inherit;
         }
+        .section-toggle:hover { background: ${accent}08; }
+        .section-left {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+        .section-chevron {
+          font-size: 10px;
+          transition: transform 0.2s;
+          opacity: 0.7;
+        }
+        .section-chevron.open { transform: rotate(90deg); }
+        .section-body {
+          padding: 0 18px 16px;
+        }
+        .section-body.hidden { display: none; }
 
         /* ── Readings ── */
         .reading-feat {
@@ -977,20 +1024,27 @@ class CatholicDailyCard extends HTMLElement {
           min-width: 82px;
           text-align: center;
         }
-        .reading-ref {
+        .reading-ref a {
           font-style: italic;
           font-size: 14px;
           font-weight: 500;
+          color: inherit;
+          text-decoration: none;
         }
-        .reading-usccb {
-          margin-top: 10px;
-          text-align: right;
-          font-size: 12px;
-        }
-        .reading-usccb a { color: ${accent}; text-decoration: none; opacity: 0.8; }
-        .reading-usccb a:hover { opacity: 1; text-decoration: underline; }
+        .reading-ref a:hover { text-decoration: underline; color: ${accent}; }
         .weekday-note { font-size: 13px; line-height: 1.6; }
         .weekday-note a { color: ${accent}; }
+
+        @media (prefers-color-scheme: dark) {
+          .card { background: rgba(0,0,0,0.25); }
+          .reading-row { background: rgba(255,255,255,0.05); }
+          .prayer-text { color: var(--primary-text-color, #e8e8e8); }
+          .verse-text { color: var(--primary-text-color, #e8e8e8); }
+        }
+        :root[data-theme="dark"] .card { background: rgba(0,0,0,0.25); }
+        :root[data-theme="dark"] .reading-row { background: rgba(255,255,255,0.05); }
+        :root[data-theme="dark"] .prayer-text { color: var(--primary-text-color, #e8e8e8); }
+        :root[data-theme="dark"] .verse-text { color: var(--primary-text-color, #e8e8e8); }
 
         /* ── Rosary ── */
         .rosary-wrap {
@@ -1068,63 +1122,70 @@ class CatholicDailyCard extends HTMLElement {
           <span class="cycle-badge">Year ${liturgy.cycle}</span>
         </div>
 
-        <div class="section">
-          <div class="section-header">
-            <span>📖</span> Daily Mass Readings
-          </div>
-          ${readingsHtml}
+        <div class="verse-bar">
+          <div class="verse-text">&ldquo;${verse.text}&rdquo;</div>
+          <div class="verse-ref">— ${verse.ref} (RSV-CE)</div>
         </div>
 
         <div class="section">
-          <div class="section-header">
-            <span>📿</span> Mysteries of the Rosary
-          </div>
-          <div class="rosary-wrap">
-            <div class="rosary-mystery-name">${rosary.subtitle}</div>
-            <div class="rosary-days">${rosary.days}</div>
+          <button class="section-toggle" onclick="this.nextElementSibling.classList.toggle('hidden');this.querySelector('.section-chevron').classList.toggle('open')">
+            <span class="section-left"><span>📖</span> Daily Mass Readings</span>
+            <span class="section-chevron open">▶</span>
+          </button>
+          <div class="section-body">
+            ${readingsHtml}
           </div>
         </div>
 
         <div class="section">
-          <div class="section-header">
-            <span>🙏</span> Prayer for Little Ones
+          <button class="section-toggle" onclick="this.nextElementSibling.classList.toggle('hidden');this.querySelector('.section-chevron').classList.toggle('open')">
+            <span class="section-left"><span>📿</span> Mysteries of the Rosary</span>
+            <span class="section-chevron open">▶</span>
+          </button>
+          <div class="section-body">
+            <div class="rosary-wrap">
+              <div class="rosary-mystery-name">${rosary.subtitle}</div>
+              <div class="rosary-days">${rosary.days}</div>
+            </div>
           </div>
-          <div class="prayer-name">${prayer.name}</div>
-          <div class="prayer-lang">${prayer.language}</div>
-          <details class="prayer-details">
-            <summary>Show Prayer</summary>
-            <div class="prayer-text">${this._escapeHtml(prayer.text)}</div>
-          </details>
+        </div>
+
+        <div class="section">
+          <button class="section-toggle" onclick="this.nextElementSibling.classList.toggle('hidden');this.querySelector('.section-chevron').classList.toggle('open')">
+            <span class="section-left"><span>🙏</span> Prayer for Little Ones</span>
+            <span class="section-chevron open">▶</span>
+          </button>
+          <div class="section-body">
+            <div class="prayer-name">${prayer.name}</div>
+            <div class="prayer-lang">${prayer.language}</div>
+            <details class="prayer-details">
+              <summary>Show Prayer</summary>
+              <div class="prayer-text">${this._escapeHtml(prayer.text)}</div>
+            </details>
+          </div>
         </div>
 
       </div>
     `;
   }
 
-  _buildReadingsHtml(readings, date, liturgy) {
-    const isSunday = date.getDay() === 0;
+  _buildReadingsHtml(readings, date, liturgy, link) {
     const { cycle, weekdayCycle, week, season } = liturgy;
+    const href = link || 'https://bible.usccb.org/bible/readings';
 
     if (readings && readings.first) {
       const feat = readings.label ? `<div class="reading-feat">${readings.label}</div>` : '';
+      const row = (label, ref) => `
+        <div class="reading-row">
+          <span class="reading-label">${label}</span>
+          <span class="reading-ref"><a href="${href}" target="_blank" rel="noopener">${ref}</a></span>
+        </div>`;
       return `
         ${feat}
-        <div class="reading-row">
-          <span class="reading-label">First Reading</span>
-          <span class="reading-ref">${readings.first}</span>
-        </div>
-        <div class="reading-row">
-          <span class="reading-label">Psalm</span>
-          <span class="reading-ref">${readings.psalm}</span>
-        </div>
-        ${readings.second ? `<div class="reading-row">
-          <span class="reading-label">Second Reading</span>
-          <span class="reading-ref">${readings.second}</span>
-        </div>` : ''}
-        <div class="reading-row">
-          <span class="reading-label">Gospel</span>
-          <span class="reading-ref">${readings.gospel}</span>
-        </div>
+        ${row('First Reading', readings.first)}
+        ${row('Psalm', readings.psalm)}
+        ${readings.second ? row('Second Reading', readings.second) : ''}
+        ${row('Gospel', readings.gospel)}
       `;
     }
 
@@ -1167,6 +1228,45 @@ class CatholicDailyCard extends HTMLElement {
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;');
   }
+}
+
+// ─── Daily Scripture Verses (RSV-CE) ─────────────────────────────────────────
+const SCRIPTURE_VERSES = [
+  { text: "For God so loved the world that he gave his only Son, that whoever believes in him should not perish but have eternal life.", ref: "John 3:16" },
+  { text: "I can do all things in him who strengthens me.", ref: "Philippians 4:13" },
+  { text: "Trust in the LORD with all your heart, and do not rely on your own insight.", ref: "Proverbs 3:5" },
+  { text: "The LORD is my shepherd, I shall not want.", ref: "Psalm 23:1" },
+  { text: "Have no anxiety about anything, but in everything by prayer and supplication with thanksgiving let your requests be made known to God.", ref: "Philippians 4:6" },
+  { text: "Love is patient and kind; love is not jealous or boastful.", ref: "1 Corinthians 13:4" },
+  { text: "Be strong and of good courage; be not frightened, neither be dismayed; for the LORD your God is with you wherever you go.", ref: "Joshua 1:9" },
+  { text: "Come to me, all who labor and are heavy laden, and I will give you rest.", ref: "Matthew 11:28" },
+  { text: "Rejoice in the Lord always; again I will say, Rejoice.", ref: "Philippians 4:4" },
+  { text: "The LORD is near to the brokenhearted, and saves the crushed in spirit.", ref: "Psalm 34:18" },
+  { text: "For I know the plans I have for you, says the LORD, plans for welfare and not for evil, to give you a future and a hope.", ref: "Jeremiah 29:11" },
+  { text: "Ask, and it will be given you; seek, and you will find; knock, and it will be opened to you.", ref: "Matthew 7:7" },
+  { text: "But they who wait for the LORD shall renew their strength, they shall mount up with wings like eagles.", ref: "Isaiah 40:31" },
+  { text: "God is our refuge and strength, a very present help in trouble.", ref: "Psalm 46:1" },
+  { text: "Do not be conformed to this world but be transformed by the renewal of your mind.", ref: "Romans 12:2" },
+  { text: "And we know that in everything God works for good with those who love him.", ref: "Romans 8:28" },
+  { text: "Your word is a lamp to my feet and a light to my path.", ref: "Psalm 119:105" },
+  { text: "What does the LORD require of you but to do justice, and to love kindness, and to walk humbly with your God?", ref: "Micah 6:8" },
+  { text: "I am the way, and the truth, and the life; no one comes to the Father, but by me.", ref: "John 14:6" },
+  { text: "Create in me a clean heart, O God, and put a new and right spirit within me.", ref: "Psalm 51:10" },
+  { text: "Let your light so shine before men, that they may see your good works and give glory to your Father who is in heaven.", ref: "Matthew 5:16" },
+  { text: "Cast your burden on the LORD, and he will sustain you.", ref: "Psalm 55:22" },
+  { text: "The peace of God, which passes all understanding, will keep your hearts and your minds in Christ Jesus.", ref: "Philippians 4:7" },
+  { text: "This is the day which the LORD has made; let us rejoice and be glad in it.", ref: "Psalm 118:24" },
+  { text: "For nothing will be impossible with God.", ref: "Luke 1:37" },
+  { text: "I am the resurrection and the life; he who believes in me, though he die, yet shall he live.", ref: "John 11:25" },
+  { text: "The fruit of the Spirit is love, joy, peace, patience, kindness, goodness, faithfulness.", ref: "Galatians 5:22" },
+  { text: "In the beginning was the Word, and the Word was with God, and the Word was God.", ref: "John 1:1" },
+  { text: "Behold, I stand at the door and knock; if any one hears my voice and opens the door, I will come in to him.", ref: "Revelation 3:20" },
+  { text: "Whatever you do, in word or deed, do everything in the name of the Lord Jesus, giving thanks to God the Father through him.", ref: "Colossians 3:17" },
+];
+
+function getDailyVerse(date) {
+  const dayOfYear = Math.floor((date - new Date(date.getFullYear(), 0, 0)) / 86400000);
+  return SCRIPTURE_VERSES[dayOfYear % SCRIPTURE_VERSES.length];
 }
 
 customElements.define('catholic-daily-card', CatholicDailyCard);
