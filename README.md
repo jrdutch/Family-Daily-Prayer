@@ -13,9 +13,23 @@ A beautiful Home Assistant Lovelace custom card displaying daily Catholic spirit
 
 ## Installation
 
+### Via HACS (Recommended)
+
+1. In Home Assistant open **HACS**.
+2. Click the three-dot menu (⋮) → **Custom repositories**.
+3. Paste `https://github.com/jrdutch/Family-Daily-Prayer` and set category to **Dashboard**.
+4. Click **Add**, then find *Catholic Daily Prayer Card* and click **Download**.
+5. Reload your browser / clear the cache.
+6. Add the card to any dashboard:
+   ```yaml
+   type: custom:catholic-daily-card
+   ```
+
+### Manual Installation
+
 1. Copy `catholic-daily-card.js` into your Home Assistant `config/www/` directory.
 
-2. In **Settings → Dashboards → Resources** (or via `configuration.yaml`), add:
+2. In **Settings → Dashboards → Resources**, add:
    ```yaml
    resources:
      - url: /local/catholic-daily-card.js
@@ -27,7 +41,31 @@ A beautiful Home Assistant Lovelace custom card displaying daily Catholic spirit
    type: custom:catholic-daily-card
    ```
 
-That's it — no sensors, no API keys, no additional configuration needed.
+## Live Daily Readings (Optional but Recommended)
+
+By default the card shows Sunday readings from its built-in lectionary and a link to USCCB for weekdays. To display live reading citations every day (including weekdays), add a sensor that fetches the USCCB RSS feed server-side.
+
+Add the following to your `configuration.yaml` and do a **full HA restart**:
+
+```yaml
+rest:
+  - resource: "https://api.rss2json.com/v1/api.json?rss_url=https%3A%2F%2Fbible.usccb.org%2Freadings.rss"
+    scan_interval: 3600
+    sensor:
+      - name: "usccb_daily_readings"
+        unique_id: usccb_daily_readings
+        value_template: "{{ value_json.items[0].title }}"
+        json_attributes_path: "$.items[0]"
+        json_attributes:
+          - title
+          - pubDate
+          - link
+          - description
+```
+
+After restart, go to **Developer Tools → States** and search for `usccb`. The sensor should appear with today's feast/day as its state and a `description` attribute containing the readings. Once it does, the card will automatically display the reading citations.
+
+Once the sensor is active, the card will automatically detect it and display reading citations for every day of the week.
 
 ## Lectionary Coverage
 
@@ -41,7 +79,7 @@ Full readings (First Reading · Psalm · Second Reading · Gospel) for:
 - **Fixed Solemnities** — Mary Mother of God (Jan 1), Assumption (Aug 15), All Saints (Nov 1), Immaculate Conception (Dec 8), Christmas (Dec 25)
 
 ### Weekdays
-For weekday Masses the card displays the lectionary cycle (Year I or II), the liturgical week, and a direct link to [bible.usccb.org/bible/readings](https://bible.usccb.org/bible/readings) for the full text.
+With the optional `sensor.usccb_daily_readings` configured, the card displays live citations (First Reading, Psalm, Gospel) for every weekday. Without the sensor, it shows the lectionary cycle (Year I or II), the liturgical week, and a link to [bible.usccb.org/bible/readings](https://bible.usccb.org/bible/readings).
 
 ## Liturgical Year Cycles
 
