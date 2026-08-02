@@ -824,8 +824,8 @@ class CatholicDailyCard extends HTMLElement {
   }
 
   connectedCallback() {
-    this._scheduleRefresh();
     this._tryRender();
+    this._scheduleRefresh();
   }
 
   _scheduleRefresh() {
@@ -833,84 +833,27 @@ class CatholicDailyCard extends HTMLElement {
     const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
     setTimeout(() => {
       this._lastDate = null;
-      this._rssCache = null;
-      this._loadRssAndRender();
+      this._tryRender();
       this._scheduleRefresh();
     }, midnight - now);
   }
 
-  _getReadingsFromHass() {
-    const sensor = this._hass?.states?.['sensor.usccb_daily_readings'];
-    if (!sensor || sensor.state === 'unavailable') return null;
-    const a = sensor.attributes;
-
-    // Format A: pre-parsed fields (command_line sensor)
-    if (a.gospel) {
-      return {
-        label:  a.label  || null,
-        first:  a.first  || null,
-        psalm:  a.psalm  || null,
-        second: a.second || null,
-        gospel: a.gospel,
-        link:   a.link   || 'https://bible.usccb.org/bible/readings',
-      };
-    }
-
-    // Format B: rss2json.com (rest sensor) — description contains full HTML with <h4> headings
-    if (a.description) {
-      const doc = new DOMParser().parseFromString(a.description, 'text/html');
-      const link = a.link || 'https://bible.usccb.org/bible/readings';
-      const label = (a.title || sensor.state || '').replace(/^[A-Z][a-z]+ \d{1,2},?\s*\d{4}\s*[-–—]?\s*/i, '').trim() || null;
-      const result = { label, link };
-
-      for (const h4 of doc.querySelectorAll('h4')) {
-        const heading = h4.textContent.trim();
-        const citation = h4.querySelector('a')?.textContent?.trim() || '';
-        if (!citation) continue;
-        if (/^Reading I(?!I)/i.test(heading))        result.first  = citation;
-        else if (/Responsorial\s+Psalm/i.test(heading)) result.psalm  = citation;
-        else if (/^Reading II/i.test(heading))        result.second = citation;
-        else if (/^Gospel/i.test(heading))            result.gospel = citation;
-      }
-
-      return result.gospel ? result : null;
-    }
-
-    return null;
-  }
-
-  _parseRssItem(doc, rawTitle, link) {
-    const titleText = rawTitle.replace(/^[A-Z][a-z]+ \d{1,2},?\s*\d{4}\s*[-–—]?\s*/i, '').trim();
-    const bodyText = (doc.body?.innerText || doc.body?.textContent || '').replace(/\s+/g, ' ');
-
-    const result = { label: titleText || null, link };
-    const ex = (p) => { const m = bodyText.match(p); return m ? m[1].trim() : null; };
-
-    result.first  = ex(/First\s+Reading[:\s]+([^;]+?)(?=\s*(?:Psalm|Second|Gospel|$))/i);
-    result.psalm  = ex(/(?:Responsorial\s+)?Psalm[:\s]+([^;]+?)(?=\s*(?:Second|Gospel|$))/i);
-    result.second = ex(/Second\s+Reading[:\s]+([^;]+?)(?=\s*Gospel)/i);
-    result.gospel = ex(/Gospel[:\s]+([^;]+?)(?=\s*(?:Alleluia|Sequence|$))/i) || ex(/Gospel[:\s]+(.+)/i);
-
-    return result.gospel ? result : null;
-  }
-
   _tryRender() {
     const today = new Date().toDateString();
-    const hassReadings = this._getReadingsFromHass();
-    const readingsChanged = !!hassReadings !== !!this._lastHassReadings;
-    if (today === this._lastDate && !readingsChanged) return;
+    if (today === this._lastDate) return;
     this._lastDate = today;
-    this._lastHassReadings = hassReadings;
     this._render(new Date());
   }
 
   _render(now) {
     const liturgy = getLiturgicalInfo(now);
-    const readings = this._getReadingsFromHass() || getMassReadings(now, liturgy);
+    const hassReadings = this._getReadingsFromHass ? this._getReadingsFromHass() : null;
+    const readings = hassReadings || getMassReadings(now, liturgy);
     const rosaryKey = DAY_TO_MYSTERY[now.getDay()];
     const rosary = ROSARY_MYSTERIES[rosaryKey];
     const prayer = getDailyPrayer(now, liturgy);
     const office = getDivineOffice(now, liturgy);
+    const verse = getDailyVerse(now);
 
     const dayName = now.toLocaleDateString('en-US', { weekday: 'long' });
     const dateStr = now.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
@@ -918,158 +861,218 @@ class CatholicDailyCard extends HTMLElement {
     const accent = liturgy.color;
     const accentLight = accent + '22'; // ~13% opacity hex
 
-    const readingsHtml = this._buildReadingsHtml(readings, now, liturgy);
+    const readingsLink = (readings && readings.link) || 'https://bible.usccb.org/bible/readings';
+    const readingsHtml = this._buildReadingsHtml(readings, now, liturgy, readingsLink);
 
     this.shadowRoot.innerHTML = `
       <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
         :host { display: block; background: transparent; }
 
         .card {
-          background: rgba(255, 255, 255, 0.06);
+          background: rgba(255,255,255,0.08);
           backdrop-filter: blur(20px);
           -webkit-backdrop-filter: blur(20px);
-          border-radius: var(--ha-card-border-radius, 12px);
-          border: 1px solid rgba(255, 255, 255, 0.18);
-          box-shadow: var(--ha-card-box-shadow, none);
+          border-radius: 20px;
+          border: 1px solid rgba(255,255,255,0.2);
           overflow: hidden;
-          font-family: Georgia, 'Times New Roman', serif;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
           color: var(--primary-text-color, #1a1a1a);
+          box-shadow: 0 8px 32px rgba(0,0,0,0.12);
         }
 
         /* ── Header ── */
         .header {
-          background: ${accent};
+          background: linear-gradient(135deg, ${accent} 0%, ${accent}aa 100%);
           color: #fff;
-          padding: 20px 24px 16px;
+          padding: 22px 24px 18px;
           text-align: center;
-          position: relative;
         }
-        .header-symbols {
-          font-size: 22px;
-          letter-spacing: 8px;
-          opacity: 0.9;
-          margin-bottom: 6px;
-        }
+        .header-icon { font-size: 30px; margin-bottom: 6px; }
         .header-title {
           font-size: 22px;
-          font-weight: bold;
-          letter-spacing: 2px;
+          font-weight: 800;
+          letter-spacing: 4px;
           text-transform: uppercase;
         }
         .header-date {
           font-size: 13px;
-          opacity: 0.85;
-          margin-top: 4px;
+          opacity: 0.88;
+          margin-top: 5px;
           font-style: italic;
+          font-weight: 300;
         }
 
-        /* ── Season Badge ── */
+        /* ── Season Bar ── */
         .season-bar {
-          background: ${accentLight};
-          border-left: 5px solid ${accent};
-          padding: 10px 20px;
+          background: ${accent}18;
+          padding: 10px 18px;
           display: flex;
           align-items: center;
           gap: 10px;
-          font-size: 14px;
-          font-weight: bold;
+          font-size: 12px;
+          font-weight: 800;
+          color: ${accent};
+          text-transform: uppercase;
+          letter-spacing: 1.5px;
+        }
+        .cycle-badge {
+          background: ${accent};
+          color: #fff;
+          border-radius: 20px;
+          padding: 2px 10px;
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.5px;
+        }
+
+        /* ── Scripture Verse ── */
+        .verse-bar {
+          padding: 12px 18px;
+          background: ${accent}10;
+          border-bottom: 1px solid rgba(128,128,128,0.15);
+          text-align: center;
+        }
+        .verse-text {
+          font-size: 13px;
+          font-style: italic;
+          font-family: Georgia, serif;
+          line-height: 1.6;
+          color: var(--primary-text-color, #1a1a1a);
+          margin-bottom: 4px;
+        }
+        .verse-ref {
+          font-size: 11px;
+          font-weight: 700;
           color: ${accent};
           text-transform: uppercase;
           letter-spacing: 1px;
         }
-        .season-icon { font-size: 18px; }
 
         /* ── Section ── */
         .section {
-          padding: 16px 20px;
-          border-bottom: 1px solid var(--divider-color, #f0f0f0);
+          padding: 0;
+          border-bottom: 1px solid rgba(128,128,128,0.15);
         }
         .section:last-child { border-bottom: none; }
 
-        .section-header {
+        .section-toggle {
+          width: 100%;
+          background: none;
+          border: none;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 14px 18px;
+          color: ${accent};
+          font-size: 11px;
+          font-weight: 800;
+          text-transform: uppercase;
+          letter-spacing: 2px;
+          font-family: inherit;
+        }
+        .section-toggle:hover { background: ${accent}08; }
+        .section-left {
           display: flex;
           align-items: center;
           gap: 8px;
-          margin-bottom: 12px;
-          color: ${accent};
-          font-size: 15px;
-          font-weight: bold;
-          text-transform: uppercase;
-          letter-spacing: 1.5px;
         }
-        .section-header-icon { font-size: 16px; }
+        .section-chevron {
+          font-size: 10px;
+          transition: transform 0.2s;
+          opacity: 0.7;
+        }
+        .section-chevron.open { transform: rotate(90deg); }
+        .section-body {
+          padding: 0 18px 16px;
+        }
+        .section-body.hidden { display: none; }
 
         /* ── Readings ── */
-        .reading-row {
-          display: grid;
-          grid-template-columns: 110px 1fr;
-          gap: 4px 12px;
-          align-items: start;
-          margin-bottom: 6px;
-          font-size: 13px;
-          line-height: 1.4;
-        }
-        .reading-label {
-          color: var(--secondary-text-color, #888);
-          font-size: 11px;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-          padding-top: 1px;
-        }
-        .reading-ref {
-          color: var(--primary-text-color, #1a1a1a);
-          font-style: italic;
-        }
         .reading-feat {
           font-size: 13px;
           color: ${accent};
-          font-weight: bold;
+          font-weight: 700;
+          margin-bottom: 12px;
+          padding: 7px 12px;
+          background: ${accent}18;
+          border-radius: 8px;
+          border-left: 3px solid ${accent};
+        }
+        .reading-row {
+          display: flex;
+          align-items: center;
+          gap: 10px;
           margin-bottom: 8px;
+          padding: 9px 12px;
+          background: rgba(255,255,255,0.07);
+          border-radius: 10px;
+          border: 1px solid rgba(128,128,128,0.12);
         }
-        .reading-usccb {
-          margin-top: 10px;
-          font-size: 12px;
+        .reading-label {
+          background: ${accent};
+          color: #fff;
+          border-radius: 5px;
+          padding: 3px 9px;
+          font-size: 10px;
+          font-weight: 800;
+          text-transform: uppercase;
+          letter-spacing: 0.4px;
+          white-space: nowrap;
+          flex-shrink: 0;
+          min-width: 82px;
+          text-align: center;
         }
-        .reading-usccb a {
-          color: ${accent};
+        .reading-ref a {
+          font-style: italic;
+          font-size: 14px;
+          font-weight: 500;
+          color: inherit;
           text-decoration: none;
-          opacity: 0.85;
         }
-        .reading-usccb a:hover { opacity: 1; text-decoration: underline; }
-        .weekday-note {
-          font-size: 13px;
-          color: var(--primary-text-color, #555);
-          line-height: 1.6;
-        }
+        .reading-ref a:hover { text-decoration: underline; color: ${accent}; }
+        .weekday-note { font-size: 13px; line-height: 1.6; }
         .weekday-note a { color: ${accent}; }
 
+        @media (prefers-color-scheme: dark) {
+          .card { background: rgba(0,0,0,0.25); }
+          .reading-row { background: rgba(255,255,255,0.05); }
+          .prayer-text { color: var(--primary-text-color, #e8e8e8); }
+          .verse-text { color: var(--primary-text-color, #e8e8e8); }
+        }
+        :root[data-theme="dark"] .card { background: rgba(0,0,0,0.25); }
+        :root[data-theme="dark"] .reading-row { background: rgba(255,255,255,0.05); }
+        :root[data-theme="dark"] .prayer-text { color: var(--primary-text-color, #e8e8e8); }
+        :root[data-theme="dark"] .verse-text { color: var(--primary-text-color, #e8e8e8); }
+
         /* ── Rosary ── */
-        .rosary-mystery-name {
-          font-size: 14px;
-          font-weight: bold;
-          color: ${accent};
+        .rosary-wrap {
           text-align: center;
-          padding: 10px 0 4px;
-          letter-spacing: 0.5px;
+          padding: 6px 0;
+        }
+        .rosary-mystery-name {
+          font-size: 21px;
+          font-weight: 700;
+          color: ${accent};
+          font-family: Georgia, serif;
+          margin-bottom: 4px;
         }
         .rosary-days {
           font-size: 11px;
           color: var(--secondary-text-color, #999);
-          text-align: center;
           font-style: italic;
         }
 
         /* ── Prayer ── */
         .prayer-name {
-          font-size: 16px;
-          font-weight: bold;
-          color: var(--primary-text-color, #333);
+          font-size: 17px;
+          font-weight: 700;
+          font-family: Georgia, serif;
           margin-bottom: 2px;
         }
         .prayer-lang {
-          font-size: 11px;
+          font-size: 10px;
           color: var(--secondary-text-color, #999);
           text-transform: uppercase;
           letter-spacing: 1px;
@@ -1082,7 +1085,7 @@ class CatholicDailyCard extends HTMLElement {
           gap: 6px;
           color: ${accent};
           font-size: 12px;
-          font-weight: bold;
+          font-weight: 700;
           text-transform: uppercase;
           letter-spacing: 1px;
           list-style: none;
@@ -1090,245 +1093,99 @@ class CatholicDailyCard extends HTMLElement {
           padding: 4px 0;
         }
         details.prayer-details summary::-webkit-details-marker { display: none; }
-        details.prayer-details summary::before {
-          content: '▶';
-          font-size: 10px;
-          transition: transform 0.2s;
-        }
-        details.prayer-details[open] summary::before {
-          content: '▼';
-        }
+        details.prayer-details summary::before { content: '▶'; font-size: 10px; }
+        details.prayer-details[open] summary::before { content: '▼'; }
         .prayer-text {
           margin-top: 10px;
           font-size: 13px;
           line-height: 1.9;
-          color: var(--primary-text-color, #333);
           white-space: pre-wrap;
-          background: ${accentLight};
-          padding: 12px 16px;
-          border-radius: 8px;
-          border-left: 3px solid ${accent};
-        }
-
-        /* ── Divine Office ── */
-        .office-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: baseline;
-          margin-bottom: 12px;
-        }
-        .office-volume {
-          font-size: 16px;
-          font-weight: bold;
-          color: ${accent};
-        }
-        .office-season {
-          font-size: 12px;
-          color: var(--secondary-text-color, #888);
-          font-style: italic;
-        }
-        .psalter-badge {
-          display: inline-block;
-          background: ${accent};
-          color: #fff;
-          border-radius: 6px;
-          padding: 2px 10px;
-          font-size: 11px;
-          font-weight: bold;
-          letter-spacing: 0.5px;
-          margin-bottom: 10px;
-        }
-        details.hours-details { margin-top: 4px; }
-        details.hours-details summary {
-          cursor: pointer;
-          display: inline-flex;
-          align-items: center;
-          gap: 6px;
-          color: ${accent};
-          font-size: 12px;
-          font-weight: bold;
-          text-transform: uppercase;
-          letter-spacing: 1px;
-          list-style: none;
-          user-select: none;
-          padding: 4px 0;
-        }
-        details.hours-details summary::-webkit-details-marker { display: none; }
-        details.hours-details summary::before {
-          content: '▶';
-          font-size: 10px;
-          transition: transform 0.2s;
-        }
-        details.hours-details[open] summary::before { content: '▼'; }
-        .hours-table {
-          width: 100%;
-          border-collapse: collapse;
-          font-size: 13px;
-          margin-top: 8px;
-        }
-        .hours-table tr { border-bottom: 1px solid var(--divider-color, #f0f0f0); }
-        .hours-table tr:last-child { border-bottom: none; }
-        .hours-table td { padding: 6px 4px; vertical-align: middle; }
-        .hours-table .hour-icon { width: 24px; font-size: 15px; }
-        .hours-table .hour-name {
-          color: var(--primary-text-color, #333);
-          font-weight: bold;
-          width: 130px;
-        }
-        .hours-table .hour-latin {
-          color: var(--secondary-text-color, #999);
-          font-style: italic;
-          font-size: 11px;
-        }
-        .hours-table .hour-link { text-align: right; padding-right: 0; }
-        .hours-table .hour-link a {
-          color: ${accent};
-          text-decoration: none;
-          font-size: 12px;
-          border: 1px solid ${accent}44;
-          padding: 2px 8px;
+          background: ${accent}11;
+          padding: 14px 16px;
           border-radius: 10px;
-          white-space: nowrap;
-        }
-        .hours-table .hour-link a:hover { background: ${accentLight}; }
-        .hours-table tr:hover { background: ${accentLight}44; }
-        .office-note {
-          font-size: 10px;
-          color: var(--secondary-text-color, #bbb);
-          margin-top: 10px;
-          line-height: 1.5;
-        }
-
-        .cycle-badge {
-          display: inline-block;
-          background: ${accentLight};
-          color: ${accent};
-          border: 1px solid ${accent};
-          border-radius: 12px;
-          padding: 1px 10px;
-          font-size: 11px;
-          font-weight: bold;
-          margin-left: 8px;
-          vertical-align: middle;
-        }
-
-        /* ── Cross SVG ── */
-        .cross-symbol {
-          display: inline-block;
-          vertical-align: middle;
+          border-left: 3px solid ${accent};
+          font-family: Georgia, serif;
         }
       </style>
 
       <div class="card">
 
-        <!-- Header -->
         <div class="header">
-          <div class="header-symbols">🙏</div>
+          <div class="header-icon">🙏</div>
           <div class="header-title">Daily Prayer</div>
           <div class="header-date">${dayName}, ${dateStr}</div>
         </div>
 
-        <!-- Season -->
         <div class="season-bar">
-          <span class="season-icon">${this._seasonIcon(liturgy.season)}</span>
-          <span>${liturgy.seasonLabel}
-            <span class="cycle-badge">Year ${liturgy.cycle}</span>
-          </span>
+          <span>${this._seasonIcon(liturgy.season)}</span>
+          <span>${liturgy.seasonLabel}</span>
+          <span class="cycle-badge">Year ${liturgy.cycle}</span>
         </div>
 
-        <!-- Mass Readings -->
+        <div class="verse-bar">
+          <div class="verse-text">&ldquo;${verse.text}&rdquo;</div>
+          <div class="verse-ref">— ${verse.ref} (RSV-CE)</div>
+        </div>
+
         <div class="section">
-          <div class="section-header">
-            <span class="section-header-icon">📖</span>
-            Daily Mass Readings
+          <button class="section-toggle" onclick="this.nextElementSibling.classList.toggle('hidden');this.querySelector('.section-chevron').classList.toggle('open')">
+            <span class="section-left"><span>📖</span> Daily Mass Readings</span>
+            <span class="section-chevron open">▶</span>
+          </button>
+          <div class="section-body">
+            ${readingsHtml}
           </div>
-          ${readingsHtml}
         </div>
 
-        <!-- Rosary -->
         <div class="section">
-          <div class="section-header">
-            <span class="section-header-icon">📿</span>
-            Mysteries of the Rosary
+          <button class="section-toggle" onclick="this.nextElementSibling.classList.toggle('hidden');this.querySelector('.section-chevron').classList.toggle('open')">
+            <span class="section-left"><span>📿</span> Mysteries of the Rosary</span>
+            <span class="section-chevron open">▶</span>
+          </button>
+          <div class="section-body">
+            <div class="rosary-wrap">
+              <div class="rosary-mystery-name">${rosary.subtitle}</div>
+              <div class="rosary-days">${rosary.days}</div>
+            </div>
           </div>
-          <div class="rosary-mystery-name">${rosary.subtitle}</div>
-          <div class="rosary-days">${rosary.days}</div>
         </div>
 
-        <!-- Children's Prayer -->
         <div class="section">
-          <div class="section-header">
-            <span class="section-header-icon">🙏</span>
-            Prayer for Little Ones
-          </div>
-          <div class="prayer-name">${prayer.name}</div>
-          <div class="prayer-lang">${prayer.language}</div>
-          <details class="prayer-details">
-            <summary>Show Prayer</summary>
-            <div class="prayer-text">${this._escapeHtml(prayer.text)}</div>
-          </details>
-        </div>
-
-        <!-- Divine Office -->
-        <div class="section">
-          <div class="section-header">
-            <span class="section-header-icon">🕐</span>
-            Liturgy of the Hours
-          </div>
-          <div class="office-header">
-            <div class="office-volume">${office.volume}</div>
-            <div class="office-season">${office.seasonRef}</div>
-          </div>
-          ${office.psalterWeek ? `<div class="psalter-badge">Psalter Week ${office.psalterWeek}</div>` : ''}
-          <details class="hours-details">
-            <summary>Prayer Times</summary>
-            <table class="hours-table">
-              ${office.hours.map(h => `
-              <tr>
-                <td class="hour-icon">${h.icon}</td>
-                <td class="hour-name">${h.name}</td>
-                <td class="hour-latin">${h.latin}</td>
-                <td class="hour-link"><a href="${h.url}" target="_blank" rel="noopener">Open →</a></td>
-              </tr>`).join('')}
-            </table>
-          </details>
-          <div class="office-note">
-            Tap any Hour to open on divineoffice.org — page numbers for your 4-volume set are shown there.
+          <button class="section-toggle" onclick="this.nextElementSibling.classList.toggle('hidden');this.querySelector('.section-chevron').classList.toggle('open')">
+            <span class="section-left"><span>🙏</span> Prayer for Little Ones</span>
+            <span class="section-chevron open">▶</span>
+          </button>
+          <div class="section-body">
+            <div class="prayer-name">${prayer.name}</div>
+            <div class="prayer-lang">${prayer.language}</div>
+            <details class="prayer-details">
+              <summary>Show Prayer</summary>
+              <div class="prayer-text">${this._escapeHtml(prayer.text)}</div>
+            </details>
           </div>
         </div>
-
 
       </div>
     `;
   }
 
-  _buildReadingsHtml(readings, date, liturgy) {
-    const { weekdayCycle, week, season } = liturgy;
-    const usccbLink = readings?.link || 'https://bible.usccb.org/bible/readings';
+  _buildReadingsHtml(readings, date, liturgy, link) {
+    const { cycle, weekdayCycle, week, season } = liturgy;
+    const href = link || 'https://bible.usccb.org/bible/readings';
 
     if (readings && readings.first) {
       const feat = readings.label ? `<div class="reading-feat">${readings.label}</div>` : '';
+      const row = (label, ref) => `
+        <div class="reading-row">
+          <span class="reading-label">${label}</span>
+          <span class="reading-ref"><a href="${href}" target="_blank" rel="noopener">${ref}</a></span>
+        </div>`;
       return `
         ${feat}
-        <div class="reading-row">
-          <span class="reading-label">First Reading</span>
-          <span class="reading-ref">${readings.first}</span>
-        </div>
-        <div class="reading-row">
-          <span class="reading-label">Psalm</span>
-          <span class="reading-ref">${readings.psalm}</span>
-        </div>
-        ${readings.second ? `<div class="reading-row">
-          <span class="reading-label">Second Reading</span>
-          <span class="reading-ref">${readings.second}</span>
-        </div>` : ''}
-        <div class="reading-row">
-          <span class="reading-label">Gospel</span>
-          <span class="reading-ref">${readings.gospel}</span>
-        </div>
-        <div class="reading-usccb">
-          <a href="${usccbLink}" target="_blank" rel="noopener">Read full text at usccb.org →</a>
-        </div>
+        ${row('First Reading', readings.first)}
+        ${row('Psalm', readings.psalm)}
+        ${readings.second ? row('Second Reading', readings.second) : ''}
+        ${row('Gospel', readings.gospel)}
       `;
     }
 
@@ -1340,13 +1197,14 @@ class CatholicDailyCard extends HTMLElement {
       </div>`;
     }
 
-    // Weekday — RSS not available yet or failed
+    // Weekday or unmatched Sunday
     const seasonLabel = liturgy.seasonLabel || 'Ordinary Time';
     return `<div class="weekday-note">
       <strong>Weekday — Lectionary Cycle ${weekdayCycle}</strong><br>
       ${seasonLabel}, Week ${week}<br><br>
+      For today's weekday readings, visit:<br>
       <a href="https://bible.usccb.org/bible/readings" target="_blank" rel="noopener">
-        Read today's readings at usccb.org →
+        bible.usccb.org/bible/readings
       </a>
     </div>`;
   }
@@ -1370,6 +1228,45 @@ class CatholicDailyCard extends HTMLElement {
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;');
   }
+}
+
+// ─── Daily Scripture Verses (RSV-CE) ─────────────────────────────────────────
+const SCRIPTURE_VERSES = [
+  { text: "For God so loved the world that he gave his only Son, that whoever believes in him should not perish but have eternal life.", ref: "John 3:16" },
+  { text: "I can do all things in him who strengthens me.", ref: "Philippians 4:13" },
+  { text: "Trust in the LORD with all your heart, and do not rely on your own insight.", ref: "Proverbs 3:5" },
+  { text: "The LORD is my shepherd, I shall not want.", ref: "Psalm 23:1" },
+  { text: "Have no anxiety about anything, but in everything by prayer and supplication with thanksgiving let your requests be made known to God.", ref: "Philippians 4:6" },
+  { text: "Love is patient and kind; love is not jealous or boastful.", ref: "1 Corinthians 13:4" },
+  { text: "Be strong and of good courage; be not frightened, neither be dismayed; for the LORD your God is with you wherever you go.", ref: "Joshua 1:9" },
+  { text: "Come to me, all who labor and are heavy laden, and I will give you rest.", ref: "Matthew 11:28" },
+  { text: "Rejoice in the Lord always; again I will say, Rejoice.", ref: "Philippians 4:4" },
+  { text: "The LORD is near to the brokenhearted, and saves the crushed in spirit.", ref: "Psalm 34:18" },
+  { text: "For I know the plans I have for you, says the LORD, plans for welfare and not for evil, to give you a future and a hope.", ref: "Jeremiah 29:11" },
+  { text: "Ask, and it will be given you; seek, and you will find; knock, and it will be opened to you.", ref: "Matthew 7:7" },
+  { text: "But they who wait for the LORD shall renew their strength, they shall mount up with wings like eagles.", ref: "Isaiah 40:31" },
+  { text: "God is our refuge and strength, a very present help in trouble.", ref: "Psalm 46:1" },
+  { text: "Do not be conformed to this world but be transformed by the renewal of your mind.", ref: "Romans 12:2" },
+  { text: "And we know that in everything God works for good with those who love him.", ref: "Romans 8:28" },
+  { text: "Your word is a lamp to my feet and a light to my path.", ref: "Psalm 119:105" },
+  { text: "What does the LORD require of you but to do justice, and to love kindness, and to walk humbly with your God?", ref: "Micah 6:8" },
+  { text: "I am the way, and the truth, and the life; no one comes to the Father, but by me.", ref: "John 14:6" },
+  { text: "Create in me a clean heart, O God, and put a new and right spirit within me.", ref: "Psalm 51:10" },
+  { text: "Let your light so shine before men, that they may see your good works and give glory to your Father who is in heaven.", ref: "Matthew 5:16" },
+  { text: "Cast your burden on the LORD, and he will sustain you.", ref: "Psalm 55:22" },
+  { text: "The peace of God, which passes all understanding, will keep your hearts and your minds in Christ Jesus.", ref: "Philippians 4:7" },
+  { text: "This is the day which the LORD has made; let us rejoice and be glad in it.", ref: "Psalm 118:24" },
+  { text: "For nothing will be impossible with God.", ref: "Luke 1:37" },
+  { text: "I am the resurrection and the life; he who believes in me, though he die, yet shall he live.", ref: "John 11:25" },
+  { text: "The fruit of the Spirit is love, joy, peace, patience, kindness, goodness, faithfulness.", ref: "Galatians 5:22" },
+  { text: "In the beginning was the Word, and the Word was with God, and the Word was God.", ref: "John 1:1" },
+  { text: "Behold, I stand at the door and knock; if any one hears my voice and opens the door, I will come in to him.", ref: "Revelation 3:20" },
+  { text: "Whatever you do, in word or deed, do everything in the name of the Lord Jesus, giving thanks to God the Father through him.", ref: "Colossians 3:17" },
+];
+
+function getDailyVerse(date) {
+  const dayOfYear = Math.floor((date - new Date(date.getFullYear(), 0, 0)) / 86400000);
+  return SCRIPTURE_VERSES[dayOfYear % SCRIPTURE_VERSES.length];
 }
 
 customElements.define('catholic-daily-card', CatholicDailyCard);
