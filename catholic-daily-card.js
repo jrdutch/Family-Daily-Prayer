@@ -902,7 +902,7 @@ class CatholicDailyCard extends HTMLElement {
 
         /* ── Season Bar ── */
         .season-bar {
-          background: linear-gradient(90deg, ${accent}2a, transparent);
+          background: ${accent}18;
           border-left: 4px solid ${accent};
           padding: 10px 18px;
           display: flex;
