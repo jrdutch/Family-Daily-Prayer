@@ -1126,27 +1126,25 @@ class CatholicDailyCard extends HTMLElement {
         .card.horizontal .header-title { font-size: 16px; letter-spacing: 3px; }
         .card.horizontal .header-date { margin-top: 0; font-size: 12px; }
         .card.horizontal .topbar {
-          display: flex;
-          align-items: center;
-          gap: 16px;
           border-bottom: 1px solid rgba(128,128,128,0.15);
+          background: ${accent}10;
+          padding: 10px 18px;
+          text-align: center;
         }
         .card.horizontal .topbar .season-bar {
-          flex-shrink: 0;
-          padding: 8px 18px;
+          justify-content: center;
+          padding: 0 0 6px;
           background: none;
         }
         .card.horizontal .topbar .verse-bar {
-          flex: 1;
           border-bottom: none;
           background: none;
-          text-align: left;
-          padding: 8px 18px 8px 0;
+          padding: 0;
         }
         .card.horizontal .verse-text { font-size: 12px; margin-bottom: 2px; }
         .card.horizontal .body {
           display: grid;
-          grid-template-columns: 1.4fr 1fr 1fr;
+          grid-template-columns: 1fr 1fr 1fr;
         }
         .card.horizontal .body .section {
           border-bottom: none;
