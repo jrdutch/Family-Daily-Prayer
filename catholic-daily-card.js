@@ -815,7 +815,12 @@ class CatholicDailyCard extends HTMLElement {
 
   setConfig(config) {
     this._config = config || {};
+    this._lastDate = null; // force re-render when options change
     this._tryRender();
+  }
+
+  getCardSize() {
+    return this._config?.layout === 'horizontal' ? 5 : 10;
   }
 
   set hass(hass) {
@@ -861,6 +866,7 @@ class CatholicDailyCard extends HTMLElement {
     const accent = liturgy.color;
     const accentLight = accent + '22'; // ~13% opacity hex
 
+    const horizontal = this._config?.layout === 'horizontal';
     const readingsLink = (readings && readings.link) || 'https://bible.usccb.org/bible/readings';
     const readingsHtml = this._buildReadingsHtml(readings, now, liturgy, readingsLink);
 
@@ -1106,16 +1112,73 @@ class CatholicDailyCard extends HTMLElement {
           border-left: 3px solid ${accent};
           font-family: Georgia, serif;
         }
+
+        /* ── Horizontal layout ── */
+        .card.horizontal .header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          text-align: left;
+          padding: 12px 20px;
+        }
+        .card.horizontal .header-icon { font-size: 22px; margin: 0 10px 0 0; }
+        .card.horizontal .header-main { display: flex; align-items: center; }
+        .card.horizontal .header-title { font-size: 16px; letter-spacing: 3px; }
+        .card.horizontal .header-date { margin-top: 0; font-size: 12px; }
+        .card.horizontal .topbar {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          border-bottom: 1px solid rgba(128,128,128,0.15);
+        }
+        .card.horizontal .topbar .season-bar {
+          flex-shrink: 0;
+          padding: 8px 18px;
+          background: none;
+        }
+        .card.horizontal .topbar .verse-bar {
+          flex: 1;
+          border-bottom: none;
+          background: none;
+          text-align: left;
+          padding: 8px 18px 8px 0;
+        }
+        .card.horizontal .verse-text { font-size: 12px; margin-bottom: 2px; }
+        .card.horizontal .body {
+          display: grid;
+          grid-template-columns: 1.4fr 1fr 1fr;
+        }
+        .card.horizontal .body .section {
+          border-bottom: none;
+          border-right: 1px solid rgba(128,128,128,0.15);
+          min-width: 0;
+        }
+        .card.horizontal .body .section:last-child { border-right: none; }
+        .card.horizontal .reading-label { min-width: 0; font-size: 9px; padding: 3px 7px; }
+        .card.horizontal .reading-ref a { font-size: 13px; }
+        .card.horizontal .rosary-mystery-name { font-size: 18px; }
+
+        @media (max-width: 640px) {
+          .card.horizontal .body { grid-template-columns: 1fr; }
+          .card.horizontal .body .section {
+            border-right: none;
+            border-bottom: 1px solid rgba(128,128,128,0.15);
+          }
+          .card.horizontal .topbar { display: block; }
+        }
       </style>
 
-      <div class="card">
+      <div class="card${horizontal ? ' horizontal' : ''}">
 
         <div class="header">
-          <div class="header-icon">🙏</div>
-          <div class="header-title">Daily Prayer</div>
+          <div class="header-main">
+            <div class="header-icon">🙏</div>
+            <div class="header-title">Daily Prayer</div>
+          </div>
           <div class="header-date">${dayName}, ${dateStr}</div>
         </div>
 
+        <div class="topbar">
         <div class="season-bar">
           <span>${this._seasonIcon(liturgy.season)}</span>
           <span>${liturgy.seasonLabel}</span>
@@ -1126,7 +1189,9 @@ class CatholicDailyCard extends HTMLElement {
           <div class="verse-text">&ldquo;${verse.text}&rdquo;</div>
           <div class="verse-ref">— ${verse.ref} (RSV-CE)</div>
         </div>
+        </div>
 
+        <div class="body">
         <div class="section">
           <button class="section-toggle" onclick="this.nextElementSibling.classList.toggle('hidden');this.querySelector('.section-chevron').classList.toggle('open')">
             <span class="section-left"><span>📖</span> Daily Mass Readings</span>
@@ -1163,6 +1228,7 @@ class CatholicDailyCard extends HTMLElement {
               <div class="prayer-text">${this._escapeHtml(prayer.text)}</div>
             </details>
           </div>
+        </div>
         </div>
 
       </div>
