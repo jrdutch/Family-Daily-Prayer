@@ -1421,14 +1421,19 @@ class CatholicDailyCard extends HTMLElement {
         .replace(/^[A-Z][a-z]+ \d{1,2},?\s*\d{4}\s*[-–—]?\s*/i, '').trim() || null;
       const result = { label, link };
 
+      // USCCB writes these headings inconsistently — "Reading 1" and
+      // "Reading I" both appear, as does "First Reading" — so accept each
+      // form. Check the second reading first so "Reading 2" can't be taken
+      // for "Reading 1". "Gospel Acclamation" and "Alleluia" are not the
+      // Gospel and must not overwrite it.
       for (const h4 of doc.querySelectorAll('h4')) {
-        const heading = h4.textContent.trim();
-        const citation = h4.querySelector('a')?.textContent?.trim() || '';
+        const heading = h4.textContent.replace(/\s+/g, ' ').trim();
+        const citation = h4.querySelector('a')?.textContent?.replace(/\s+/g, ' ').trim() || '';
         if (!citation) continue;
-        if (/^Reading I(?!I)/i.test(heading))           result.first  = citation;
-        else if (/Responsorial\s+Psalm/i.test(heading)) result.psalm  = citation;
-        else if (/^Reading II/i.test(heading))          result.second = citation;
-        else if (/^Gospel/i.test(heading))              result.gospel = citation;
+        if (/^(Reading\s*(?:2|II)\b|Second\s+Reading)/i.test(heading))     result.second = citation;
+        else if (/^(Reading\s*(?:1|I)\b|First\s+Reading)/i.test(heading))  result.first  = citation;
+        else if (/Responsorial\s+Psalm/i.test(heading))                    result.psalm  = citation;
+        else if (/^Gospel(?!\s*Acclamation)/i.test(heading))               result.gospel = citation;
       }
 
       return result.gospel ? result : null;
@@ -1929,18 +1934,20 @@ ${cfg.show_saint ? `        <div class="section">
     const { cycle, weekdayCycle, week, season } = liturgy;
     const href = link || 'https://bible.usccb.org/bible/readings';
 
-    if (readings && readings.first) {
+    // Render whatever citations we have — a weekday with no second reading,
+    // or a feed that omits one heading, should still show the rest.
+    if (readings && (readings.first || readings.gospel)) {
       const feat = readings.label ? `<div class="reading-feat">${readings.label}</div>` : '';
-      const row = (label, ref) => `
+      const row = (label, ref) => ref ? `
         <div class="reading-row">
           <span class="reading-label">${label}</span>
           <span class="reading-ref"><a href="${href}" target="_blank" rel="noopener">${ref}</a></span>
-        </div>`;
+        </div>` : '';
       return `
         ${feat}
         ${row('First Reading', readings.first)}
         ${row('Psalm', readings.psalm)}
-        ${readings.second ? row('Second Reading', readings.second) : ''}
+        ${row('Second Reading', readings.second)}
         ${row('Gospel', readings.gospel)}
       `;
     }
