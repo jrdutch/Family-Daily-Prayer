@@ -1202,9 +1202,9 @@ const CARD_DEFAULTS = {
   layout: 'vertical',
   show_readings: true,
   show_rosary: true,
-  show_prayer: true,
+  show_prayer: false,
   show_saint: true,
-  show_verse: true,
+  show_verse: false,
   saint_image: true,
   saint_image_height: 140,
   start_collapsed: false,
@@ -1215,12 +1215,12 @@ function normalizeCardConfig(config) {
   c.layout = ['vertical', 'horizontal'].includes(c.layout) ? c.layout : 'vertical';
   const h = Number(c.saint_image_height);
   c.saint_image_height = Number.isFinite(h) ? Math.min(Math.max(h, 60), 400) : 140;
+  // An explicit boolean from the config wins; anything else falls back to the
+  // default, so options left unset keep their intended value either way.
   for (const k of ['show_readings','show_rosary','show_prayer','show_saint',
                    'show_verse','saint_image','start_collapsed']) {
-    c[k] = c[k] !== false;
+    c[k] = typeof config?.[k] === 'boolean' ? config[k] : CARD_DEFAULTS[k];
   }
-  // start_collapsed defaults to off, so treat a missing value as false
-  c.start_collapsed = config?.start_collapsed === true;
   return c;
 }
 
@@ -1498,22 +1498,32 @@ class CatholicDailyCard extends HTMLElement {
         .header {
           background: linear-gradient(135deg, ${accent} 0%, ${accent}aa 100%);
           color: #fff;
-          padding: 22px 24px 18px;
-          text-align: center;
+          padding: 11px 18px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
         }
-        .header-icon { font-size: 30px; margin-bottom: 6px; }
+        .header-main {
+          display: flex;
+          align-items: center;
+          gap: 9px;
+          min-width: 0;
+        }
+        .header-icon { font-size: 19px; line-height: 1; }
         .header-title {
-          font-size: 22px;
+          font-size: 15px;
           font-weight: 800;
-          letter-spacing: 4px;
+          letter-spacing: 2.5px;
           text-transform: uppercase;
+          white-space: nowrap;
         }
         .header-date {
-          font-size: 13px;
-          opacity: 0.88;
-          margin-top: 5px;
+          font-size: 12px;
+          opacity: 0.9;
           font-style: italic;
           font-weight: 300;
+          text-align: right;
         }
 
         /* ── Season Bar ── */
@@ -1801,17 +1811,6 @@ class CatholicDailyCard extends HTMLElement {
         .saint-link:hover { text-decoration: underline; }
 
         /* ── Horizontal layout ── */
-        .card.horizontal .header {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          text-align: left;
-          padding: 12px 20px;
-        }
-        .card.horizontal .header-icon { font-size: 22px; margin: 0 10px 0 0; }
-        .card.horizontal .header-main { display: flex; align-items: center; }
-        .card.horizontal .header-title { font-size: 16px; letter-spacing: 3px; }
-        .card.horizontal .header-date { margin-top: 0; font-size: 12px; }
         .card.horizontal .topbar {
           border-bottom: 1px solid rgba(128,128,128,0.15);
           background: ${accent}10;
