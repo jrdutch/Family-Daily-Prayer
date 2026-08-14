@@ -1498,22 +1498,32 @@ class CatholicDailyCard extends HTMLElement {
         .header {
           background: linear-gradient(135deg, ${accent} 0%, ${accent}aa 100%);
           color: #fff;
-          padding: 22px 24px 18px;
-          text-align: center;
+          padding: 11px 18px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
         }
-        .header-icon { font-size: 30px; margin-bottom: 6px; }
+        .header-main {
+          display: flex;
+          align-items: center;
+          gap: 9px;
+          min-width: 0;
+        }
+        .header-icon { font-size: 19px; line-height: 1; }
         .header-title {
-          font-size: 22px;
+          font-size: 15px;
           font-weight: 800;
-          letter-spacing: 4px;
+          letter-spacing: 2.5px;
           text-transform: uppercase;
+          white-space: nowrap;
         }
         .header-date {
-          font-size: 13px;
-          opacity: 0.88;
-          margin-top: 5px;
+          font-size: 12px;
+          opacity: 0.9;
           font-style: italic;
           font-weight: 300;
+          text-align: right;
         }
 
         /* ── Season Bar ── */
@@ -1801,17 +1811,6 @@ class CatholicDailyCard extends HTMLElement {
         .saint-link:hover { text-decoration: underline; }
 
         /* ── Horizontal layout ── */
-        .card.horizontal .header {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          text-align: left;
-          padding: 12px 20px;
-        }
-        .card.horizontal .header-icon { font-size: 22px; margin: 0 10px 0 0; }
-        .card.horizontal .header-main { display: flex; align-items: center; }
-        .card.horizontal .header-title { font-size: 16px; letter-spacing: 3px; }
-        .card.horizontal .header-date { margin-top: 0; font-size: 12px; }
         .card.horizontal .topbar {
           border-bottom: 1px solid rgba(128,128,128,0.15);
           background: ${accent}10;
