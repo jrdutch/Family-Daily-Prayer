@@ -1202,9 +1202,9 @@ const CARD_DEFAULTS = {
   layout: 'vertical',
   show_readings: true,
   show_rosary: true,
-  show_prayer: true,
+  show_prayer: false,
   show_saint: true,
-  show_verse: true,
+  show_verse: false,
   saint_image: true,
   saint_image_height: 140,
   start_collapsed: false,
@@ -1215,12 +1215,12 @@ function normalizeCardConfig(config) {
   c.layout = ['vertical', 'horizontal'].includes(c.layout) ? c.layout : 'vertical';
   const h = Number(c.saint_image_height);
   c.saint_image_height = Number.isFinite(h) ? Math.min(Math.max(h, 60), 400) : 140;
+  // An explicit boolean from the config wins; anything else falls back to the
+  // default, so options left unset keep their intended value either way.
   for (const k of ['show_readings','show_rosary','show_prayer','show_saint',
                    'show_verse','saint_image','start_collapsed']) {
-    c[k] = c[k] !== false;
+    c[k] = typeof config?.[k] === 'boolean' ? config[k] : CARD_DEFAULTS[k];
   }
-  // start_collapsed defaults to off, so treat a missing value as false
-  c.start_collapsed = config?.start_collapsed === true;
   return c;
 }
 
