@@ -804,6 +804,202 @@ function getDailyPrayer(date, liturgy) {
   return KIDS_PRAYERS[dayOfYear % KIDS_PRAYERS.length];
 }
 
+// ─── Saint illustrations (fallback art when the feed has no photo) ────────
+const ILLUSTRATIONS = {
+  marian: (name) => `<svg viewBox="0 0 420 200" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <radialGradient id="mg" cx="50%" cy="40%" r="60%"><stop offset="0%" stop-color="#1a3a6b"/><stop offset="100%" stop-color="#0d1f3c"/></radialGradient>
+      <radialGradient id="mhalo" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#f5d78e" stop-opacity=".5"/><stop offset="100%" stop-color="#f5d78e" stop-opacity="0"/></radialGradient>
+    </defs>
+    <rect width="420" height="200" fill="url(#mg)"/>
+    ${Array.from({length:12},(_,i)=>{const a=i*30-90,r=72,x=210+r*Math.cos(a*Math.PI/180),y=100+r*Math.sin(a*Math.PI/180);return`<polygon points="${x},${y-6} ${x+1.5},${y-2} ${x+5.5},${y-2} ${x+2.5},${y+1} ${x+3.5},${y+5} ${x},${y+2.5} ${x-3.5},${y+5} ${x-2.5},${y+1} ${x-5.5},${y-2} ${x-1.5},${y-2}" fill="#f5d78e"/>`;}).join('')}
+    <ellipse cx="210" cy="100" rx="55" ry="55" fill="url(#mhalo)"/>
+    <ellipse cx="210" cy="88" rx="28" ry="30" fill="#e8d0f0"/>
+    <path d="M182 118 Q210 160 238 118 Q225 175 210 178 Q195 175 182 118Z" fill="#c8a8e0"/>
+    <ellipse cx="210" cy="84" rx="17" ry="19" fill="#f0e0c8"/>
+    <path d="M193 80 Q210 60 227 80 Q230 100 227 118 Q210 112 193 118 Q190 100 193 80Z" fill="#d4b8e0" opacity=".6"/>
+    <circle cx="210" cy="82" r="23" fill="none" stroke="#f5d78e" stroke-width="1.5" opacity=".8"/>
+    <line x1="210" y1="178" x2="210" y2="155" stroke="#5a8a4a" stroke-width="2"/>
+    <ellipse cx="210" cy="150" rx="6" ry="10" fill="white" transform="rotate(-15,210,150)"/>
+    <ellipse cx="217" cy="148" rx="5" ry="9" fill="white" transform="rotate(10,217,148)"/>
+    <ellipse cx="203" cy="148" rx="5" ry="9" fill="white" transform="rotate(-40,203,148)"/>
+    <text x="210" y="195" text-anchor="middle" font-family="Georgia,serif" font-size="11" fill="#f5d78e" opacity=".8">${name}</text></svg>`,
+
+  bishop: (name) => `<svg viewBox="0 0 420 200" xmlns="http://www.w3.org/2000/svg">
+    <defs><linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#2a1a4a"/><stop offset="100%" stop-color="#1a0e30"/></linearGradient></defs>
+    <rect width="420" height="200" fill="url(#bg)"/>
+    <rect x="8" y="8" width="404" height="184" rx="6" fill="none" stroke="#8b6a2a" stroke-width="1" opacity=".6"/>
+    <path d="M185 140 L195 80 L210 55 L225 80 L235 140Z" fill="#7a3a6a"/>
+    <path d="M195 80 L210 55 L225 80" fill="none" stroke="#f5d78e" stroke-width="1.5"/>
+    <line x1="185" y1="140" x2="235" y2="140" stroke="#f5d78e" stroke-width="1.5"/>
+    <line x1="195" y1="115" x2="225" y2="115" stroke="#f5d78e" stroke-width="1"/>
+    <line x1="210" y1="68" x2="210" y2="90" stroke="#f5d78e" stroke-width="2"/>
+    <line x1="200" y1="76" x2="220" y2="76" stroke="#f5d78e" stroke-width="2"/>
+    <circle cx="210" cy="100" r="3" fill="#c04040"/><circle cx="200" cy="125" r="2.5" fill="#4060c0"/><circle cx="220" cy="125" r="2.5" fill="#4060c0"/>
+    <line x1="242" y1="160" x2="242" y2="70" stroke="#a07830" stroke-width="4" stroke-linecap="round"/>
+    <path d="M242 70 Q242 50 255 50 Q268 50 268 63 Q268 75 255 78 Q248 80 242 78" fill="none" stroke="#a07830" stroke-width="3.5" stroke-linecap="round"/>
+    <circle cx="210" cy="108" r="32" fill="none" stroke="#f5d78e" stroke-width="1" opacity=".5" stroke-dasharray="3,3"/>
+    <text x="210" y="178" text-anchor="middle" font-family="Georgia,serif" font-size="11" fill="#f5d78e" opacity=".8">${name}</text></svg>`,
+
+  martyr: (name) => `<svg viewBox="0 0 420 200" xmlns="http://www.w3.org/2000/svg">
+    <defs><radialGradient id="rg" cx="50%" cy="50%" r="70%"><stop offset="0%" stop-color="#6b1a1a"/><stop offset="100%" stop-color="#2a0808"/></radialGradient></defs>
+    <rect width="420" height="200" fill="url(#rg)"/>
+    <line x1="140" y1="185" x2="180" y2="60" stroke="#4a7a2a" stroke-width="3" stroke-linecap="round"/>
+    ${[-20,-10,0,10,20,30,40].map((t,i)=>`<ellipse cx="${165+i*2}" cy="${155-i*14}" rx="18" ry="6" fill="#5a8a3a" transform="rotate(${-50+t},${165+i*2},${155-i*14})" opacity="${.6+i*.06}"/>`).join('')}
+    <line x1="280" y1="185" x2="240" y2="60" stroke="#4a7a2a" stroke-width="3" stroke-linecap="round"/>
+    ${[-20,-10,0,10,20,30,40].map((t,i)=>`<ellipse cx="${255-i*2}" cy="${155-i*14}" rx="18" ry="6" fill="#5a8a3a" transform="rotate(${50-t},${255-i*2},${155-i*14})" opacity="${.6+i*.06}"/>`).join('')}
+    <rect x="204" y="40" width="12" height="110" rx="3" fill="#d4a030"/>
+    <rect x="182" y="68" width="56" height="12" rx="3" fill="#d4a030"/>
+    <circle cx="210" cy="100" r="45" fill="none" stroke="#f5d78e" stroke-width="1" opacity=".4"/>
+    <text x="210" y="188" text-anchor="middle" font-family="Georgia,serif" font-size="11" fill="#f5d78e" opacity=".8">${name}</text></svg>`,
+
+  apostle: (name) => `<svg viewBox="0 0 420 200" xmlns="http://www.w3.org/2000/svg">
+    <defs><linearGradient id="apg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#1a3a2a"/><stop offset="100%" stop-color="#0d2018"/></linearGradient></defs>
+    <rect width="420" height="200" fill="url(#apg)"/>
+    <path d="M20,20 L50,20 M20,20 L20,50" stroke="#8b6a2a" stroke-width="1.5" fill="none"/>
+    <path d="M400,20 L370,20 M400,20 L400,50" stroke="#8b6a2a" stroke-width="1.5" fill="none"/>
+    <path d="M20,180 L50,180 M20,180 L20,150" stroke="#8b6a2a" stroke-width="1.5" fill="none"/>
+    <path d="M400,180 L370,180 M400,180 L400,150" stroke="#8b6a2a" stroke-width="1.5" fill="none"/>
+    <g transform="translate(185,100) rotate(-30)">
+      <circle cx="0" cy="-40" r="18" fill="none" stroke="#c8a030" stroke-width="4"/>
+      <circle cx="0" cy="-40" r="8" fill="none" stroke="#c8a030" stroke-width="3"/>
+      <line x1="0" y1="-22" x2="0" y2="48" stroke="#c8a030" stroke-width="4" stroke-linecap="round"/>
+      <line x1="0" y1="30" x2="10" y2="30" stroke="#c8a030" stroke-width="4" stroke-linecap="round"/>
+      <line x1="0" y1="42" x2="10" y2="42" stroke="#c8a030" stroke-width="4" stroke-linecap="round"/>
+    </g>
+    <g transform="translate(235,100) rotate(30)">
+      <circle cx="0" cy="-40" r="18" fill="none" stroke="#a8a8a8" stroke-width="4"/>
+      <circle cx="0" cy="-40" r="8" fill="none" stroke="#a8a8a8" stroke-width="3"/>
+      <line x1="0" y1="-22" x2="0" y2="48" stroke="#a8a8a8" stroke-width="4" stroke-linecap="round"/>
+      <line x1="0" y1="30" x2="10" y2="30" stroke="#a8a8a8" stroke-width="4" stroke-linecap="round"/>
+      <line x1="0" y1="42" x2="10" y2="42" stroke="#a8a8a8" stroke-width="4" stroke-linecap="round"/>
+    </g>
+    <circle cx="210" cy="95" r="38" fill="none" stroke="#f5d78e" stroke-width="1" opacity=".5"/>
+    <text x="210" y="185" text-anchor="middle" font-family="Georgia,serif" font-size="11" fill="#f5d78e" opacity=".8">${name}</text></svg>`,
+
+  friar: (name) => `<svg viewBox="0 0 420 200" xmlns="http://www.w3.org/2000/svg">
+    <defs><linearGradient id="frg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#3a2a1a"/><stop offset="100%" stop-color="#1e1408"/></linearGradient></defs>
+    <rect width="420" height="200" fill="url(#frg)"/>
+    <path d="M30,185 Q210,170 390,185" fill="none" stroke="#c8a030" stroke-width="2" stroke-dasharray="8,4" opacity=".5"/>
+    <path d="M175,170 Q175,100 210,70 Q245,100 245,170Z" fill="#5a3a1a"/>
+    <path d="M185,170 Q185,108 210,82 Q235,108 235,170Z" fill="#6b4a2a"/>
+    <ellipse cx="210" cy="118" rx="22" ry="26" fill="#e8d0b0"/>
+    <circle cx="210" cy="115" r="35" fill="none" stroke="#f5d78e" stroke-width="1.5" opacity=".6"/>
+    <line x1="210" y1="45" x2="210" y2="68" stroke="#c8a030" stroke-width="3" stroke-linecap="round"/>
+    <line x1="196" y1="50" x2="224" y2="50" stroke="#c8a030" stroke-width="3" stroke-linecap="round"/>
+    <rect x="192" y="148" width="36" height="24" rx="2" fill="#8b5a2a"/>
+    <line x1="210" y1="148" x2="210" y2="172" stroke="#c8a030" stroke-width="1"/>
+    <text x="210" y="188" text-anchor="middle" font-family="Georgia,serif" font-size="11" fill="#f5d78e" opacity=".8">${name}</text></svg>`,
+
+  archangel: (name) => `<svg viewBox="0 0 420 200" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="argg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#1a2a4a"/><stop offset="100%" stop-color="#080d1e"/></linearGradient>
+      <radialGradient id="arglow" cx="50%" cy="45%" r="40%"><stop offset="0%" stop-color="#c8d8ff" stop-opacity=".3"/><stop offset="100%" stop-color="#c8d8ff" stop-opacity="0"/></radialGradient>
+    </defs>
+    <rect width="420" height="200" fill="url(#argg)"/>
+    <ellipse cx="210" cy="90" rx="80" ry="70" fill="url(#arglow)"/>
+    <path d="M210,105 Q160,70 120,110 Q145,75 175,90 Q190,82 210,95Z" fill="#b8c8e8" opacity=".7"/>
+    <path d="M210,105 Q155,85 125,125 Q150,90 178,100 Q193,94 210,105Z" fill="#d8e4f8" opacity=".5"/>
+    <path d="M210,105 Q260,70 300,110 Q275,75 245,90 Q230,82 210,95Z" fill="#b8c8e8" opacity=".7"/>
+    <path d="M210,105 Q265,85 295,125 Q270,90 242,100 Q227,94 210,105Z" fill="#d8e4f8" opacity=".5"/>
+    <path d="M198,105 Q198,140 195,170 Q210,165 225,170 Q222,140 222,105Z" fill="#e8e4d8"/>
+    <circle cx="210" cy="92" r="18" fill="#f0e0c8"/>
+    <circle cx="210" cy="92" r="26" fill="none" stroke="#f5d78e" stroke-width="2" opacity=".8"/>
+    <line x1="230" y1="60" x2="230" y2="155" stroke="#c8c8d8" stroke-width="3" stroke-linecap="round"/>
+    <line x1="222" y1="95" x2="238" y2="95" stroke="#c8c8d8" stroke-width="4" stroke-linecap="round"/>
+    <polygon points="230,58 227,68 233,68" fill="#e8d840"/>
+    <text x="210" y="188" text-anchor="middle" font-family="Georgia,serif" font-size="11" fill="#f5d78e" opacity=".8">${name}</text></svg>`,
+
+  solemnity: (name) => `<svg viewBox="0 0 420 200" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <radialGradient id="solg" cx="50%" cy="50%" r="70%"><stop offset="0%" stop-color="#4a3000"/><stop offset="100%" stop-color="#1a1000"/></radialGradient>
+      <radialGradient id="solGlow" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#f5d78e" stop-opacity=".6"/><stop offset="100%" stop-color="#f5d78e" stop-opacity="0"/></radialGradient>
+    </defs>
+    <rect width="420" height="200" fill="url(#solg)"/>
+    ${Array.from({length:24},(_,i)=>{const a=i*15,r1=40,r2=85,x1=210+r1*Math.cos(a*Math.PI/180),y1=95+r1*Math.sin(a*Math.PI/180),x2=210+r2*Math.cos(a*Math.PI/180),y2=95+r2*Math.sin(a*Math.PI/180);return`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#f5d78e" stroke-width="${i%2===0?1:.5}" opacity="${i%2===0?.4:.2}"/>`;}).join('')}
+    <circle cx="210" cy="95" r="45" fill="url(#solGlow)"/>
+    <circle cx="210" cy="95" r="32" fill="#8b6a00" opacity=".8"/>
+    <circle cx="210" cy="95" r="32" fill="none" stroke="#f5d78e" stroke-width="2"/>
+    <text x="210" y="103" text-anchor="middle" font-family="Georgia,serif" font-size="26" font-weight="bold" fill="#f5d78e">IHS</text>
+    <line x1="210" y1="72" x2="210" y2="62" stroke="#f5d78e" stroke-width="2"/>
+    <line x1="205" y1="66" x2="215" y2="66" stroke="#f5d78e" stroke-width="2"/>
+    ${Array.from({length:8},(_,i)=>{const a=i*45,r=50,x=210+r*Math.cos(a*Math.PI/180),y=95+r*Math.sin(a*Math.PI/180);return`<circle cx="${x}" cy="${y}" r="2.5" fill="#f5d78e" opacity=".6"/>`;}).join('')}
+    <text x="210" y="178" text-anchor="middle" font-family="Georgia,serif" font-size="11" fill="#f5d78e" opacity=".8">${name}</text></svg>`,
+
+  christmas: (name) => `<svg viewBox="0 0 420 200" xmlns="http://www.w3.org/2000/svg">
+    <defs><linearGradient id="chrg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#0a0a2a"/><stop offset="100%" stop-color="#1a0a0a"/></linearGradient></defs>
+    <rect width="420" height="200" fill="url(#chrg)"/>
+    ${[[80,30],[150,20],[300,25],[360,35],[100,60],[340,55],[60,80],[380,70]].map(([x,y])=>`<polygon points="${x},${y-5} ${x+1.2},${y-1.5} ${x+5},${y-1.5} ${x+2},${y+1} ${x+3},${y+5} ${x},${y+2} ${x-3},${y+5} ${x-2},${y+1} ${x-5},${y-1.5} ${x-1.2},${y-1.5}" fill="#f5f0d0" opacity=".7"/>`).join('')}
+    <polygon points="210,10 213,28 228,18 216,30 232,33 216,36 228,48 213,38 210,56 207,38 192,48 204,36 188,33 204,30 192,18 207,28" fill="#f5d030" opacity=".95"/>
+    <line x1="210" y1="56" x2="210" y2="85" stroke="#f5d030" stroke-width="1.5" opacity=".5"/>
+    <polygon points="120,120 210,85 300,120" fill="#3a2a1a"/>
+    <rect x="175" y="135" width="70" height="30" rx="4" fill="#6a4a1a"/>
+    <ellipse cx="210" cy="140" rx="20" ry="10" fill="#f0e0c8"/>
+    <ellipse cx="210" cy="132" rx="10" ry="10" fill="#f0e0c8"/>
+    <circle cx="210" cy="132" r="14" fill="none" stroke="#f5d78e" stroke-width="1.5" opacity=".8"/>
+    <ellipse cx="160" cy="138" rx="12" ry="22" fill="#1a2a6a"/>
+    <circle cx="160" cy="116" r="10" fill="#3a1a00"/>
+    <ellipse cx="258" cy="135" rx="13" ry="25" fill="#2a1a00"/>
+    <circle cx="258" cy="110" r="11" fill="#2a1a00"/>
+    <line x1="272" y1="100" x2="258" y2="160" stroke="#4a3a1a" stroke-width="3"/>
+    <text x="210" y="186" text-anchor="middle" font-family="Georgia,serif" font-size="11" fill="#f5d78e" opacity=".8">${name}</text></svg>`,
+
+  monk: (name) => `<svg viewBox="0 0 420 200" xmlns="http://www.w3.org/2000/svg">
+    <defs><linearGradient id="mkg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#1a1a0a"/><stop offset="100%" stop-color="#0a0a05"/></linearGradient></defs>
+    <rect width="420" height="200" fill="url(#mkg)"/>
+    <rect x="10" y="10" width="400" height="180" rx="5" fill="none" stroke="#8b6a2a" stroke-width="2"/>
+    ${[[30,30],[390,30],[30,170],[390,170]].map(([cx,cy])=>`<circle cx="${cx}" cy="${cy}" r="6" fill="#8b6a2a"/><circle cx="${cx}" cy="${cy}" r="3" fill="#f5d78e"/>`).join('')}
+    <path d="M150,130 Q150,90 210,85 Q270,90 270,130 Q270,150 210,155 Q150,150 150,130Z" fill="#f5e8c8"/>
+    <line x1="210" y1="85" x2="210" y2="155" stroke="#8b6a2a" stroke-width="1.5"/>
+    ${[100,110,120,130,140].map(y=>`<line x1="160" y1="${y}" x2="206" y2="${y}" stroke="#6a4a1a" stroke-width="1" opacity=".4"/><line x1="214" y1="${y}" x2="260" y2="${y}" stroke="#6a4a1a" stroke-width="1" opacity=".4"/>`).join('')}
+    <line x1="210" y1="35" x2="210" y2="78" stroke="#c8a030" stroke-width="3" stroke-linecap="round"/>
+    <line x1="190" y1="50" x2="230" y2="50" stroke="#c8a030" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="210" cy="56" r="26" fill="none" stroke="#f5d78e" stroke-width="1" opacity=".4" stroke-dasharray="4,4"/>
+    <text x="210" y="180" text-anchor="middle" font-family="Georgia,serif" font-size="11" fill="#f5d78e" opacity=".8">${name}</text></svg>`,
+
+  mystic: (name) => `<svg viewBox="0 0 420 200" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <radialGradient id="mysg" cx="50%" cy="40%" r="60%"><stop offset="0%" stop-color="#3a1a4a"/><stop offset="100%" stop-color="#150a20"/></radialGradient>
+      <radialGradient id="mysHeart" cx="50%" cy="40%" r="60%"><stop offset="0%" stop-color="#e04040"/><stop offset="100%" stop-color="#801818"/></radialGradient>
+    </defs>
+    <rect width="420" height="200" fill="url(#mysg)"/>
+    ${Array.from({length:20},(_,i)=>`<circle cx="${60+i*16}" cy="${40+Math.sin(i*0.8)*30}" r="1.5" fill="#f5d78e" opacity="${.2+i%3*.2}"/>`).join('')}
+    <path d="M210,145 Q180,120 180,105 Q180,88 195,85 Q205,82 210,90 Q215,82 225,85 Q240,88 240,105 Q240,120 210,145Z" fill="url(#mysHeart)"/>
+    <path d="M200,87 Q197,72 202,65 Q204,78 208,72 Q206,82 210,78 Q214,82 212,72 Q216,78 218,65 Q223,72 220,87" fill="#f5a030" opacity=".9"/>
+    <line x1="210" y1="95" x2="210" y2="118" stroke="#f5d78e" stroke-width="2"/>
+    <line x1="202" y1="103" x2="218" y2="103" stroke="#f5d78e" stroke-width="2"/>
+    <circle cx="210" cy="112" r="24" fill="none" stroke="#6a4a1a" stroke-width="2" stroke-dasharray="3,2"/>
+    <circle cx="210" cy="100" r="55" fill="none" stroke="#f5d78e" stroke-width=".5" opacity=".3"/>
+    <circle cx="210" cy="100" r="48" fill="none" stroke="#f5d78e" stroke-width="1" opacity=".4"/>
+    <text x="210" y="186" text-anchor="middle" font-family="Georgia,serif" font-size="11" fill="#f5d78e" opacity=".8">${name}</text></svg>`,
+
+  default: (name) => `<svg viewBox="0 0 420 200" xmlns="http://www.w3.org/2000/svg">
+    <defs><linearGradient id="defg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#2a1a0a"/><stop offset="100%" stop-color="#1a0e05"/></linearGradient></defs>
+    <rect width="420" height="200" fill="url(#defg)"/>
+    <rect x="12" y="12" width="396" height="176" rx="6" fill="none" stroke="#8b6a2a" stroke-width="1.5"/>
+    <rect x="204" y="30" width="12" height="130" rx="4" fill="#c8a030"/>
+    <rect x="170" y="68" width="80" height="14" rx="4" fill="#c8a030"/>
+    <circle cx="210" cy="95" r="52" fill="none" stroke="#f5d78e" stroke-width="1" opacity=".4"/>
+    ${[[210,35],[210,155],[150,95],[270,95]].map(([x,y])=>`<circle cx="${x}" cy="${y}" r="4" fill="#f5d78e" opacity=".5"/>`).join('')}
+    <text x="210" y="182" text-anchor="middle" font-family="Georgia,serif" font-size="11" fill="#f5d78e" opacity=".8">${name}</text></svg>`,
+};
+
+function getIllustration(saint) {
+  const t = (saint.tags || []).join(' ').toLowerCase();
+  const n = (saint.name || '').toLowerCase();
+  if (/christmas|nativity of our lord/.test(n))                              return ILLUSTRATIONS.christmas(saint.name);
+  if (/mary|marian|virgin|assumption|immaculate|annunciation|visitation/.test(n + t)) return ILLUSTRATIONS.marian(saint.name);
+  if (/archangel/.test(t + n))                                               return ILLUSTRATIONS.archangel(saint.name);
+  if (/apostle/.test(t))                                                     return ILLUSTRATIONS.apostle(saint.name);
+  if (/martyr/.test(t))                                                      return ILLUSTRATIONS.martyr(saint.name);
+  if (/mystic|carmelite/.test(t + n))                                        return ILLUSTRATIONS.mystic(saint.name);
+  if (/friar|franciscan/.test(t + n))                                        return ILLUSTRATIONS.friar(saint.name);
+  if (/monk|abbot|benedic/.test(t + n))                                      return ILLUSTRATIONS.monk(saint.name);
+  if (/bishop|doctor|theologian|pope/.test(t))                               return ILLUSTRATIONS.bishop(saint.name);
+  if (/solemnity/.test(t))                                                   return ILLUSTRATIONS.solemnity(saint.name);
+  return ILLUSTRATIONS.default(saint.name);
+}
+
 // ─── Saint of the Day ────────────────────────────────────────────────────────
 // Ported from the standalone saint-of-day-card so the two cards can live as
 // one. Curated dates below are authoritative for rank, tags and quote; the
@@ -1000,6 +1196,102 @@ function saintTodayKey() {
   return String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 }
 
+// ─── Config ──────────────────────────────────────────────────────────────────
+
+const CARD_DEFAULTS = {
+  layout: 'vertical',
+  show_readings: true,
+  show_rosary: true,
+  show_prayer: true,
+  show_saint: true,
+  show_verse: true,
+  saint_image: true,
+  saint_image_height: 140,
+  start_collapsed: false,
+};
+
+function normalizeCardConfig(config) {
+  const c = { ...CARD_DEFAULTS, ...(config || {}) };
+  c.layout = ['vertical', 'horizontal'].includes(c.layout) ? c.layout : 'vertical';
+  const h = Number(c.saint_image_height);
+  c.saint_image_height = Number.isFinite(h) ? Math.min(Math.max(h, 60), 400) : 140;
+  for (const k of ['show_readings','show_rosary','show_prayer','show_saint',
+                   'show_verse','saint_image','start_collapsed']) {
+    c[k] = c[k] !== false;
+  }
+  // start_collapsed defaults to off, so treat a missing value as false
+  c.start_collapsed = config?.start_collapsed === true;
+  return c;
+}
+
+// ─── Visual editor ───────────────────────────────────────────────────────────
+// ha-form ships with Home Assistant, so the editor is just a schema plus the
+// value/changed plumbing HA expects.
+const EDITOR_SCHEMA = [
+  { name: 'layout', selector: { select: {
+      mode: 'dropdown',
+      options: [
+        { value: 'vertical',   label: 'Vertical (stacked)' },
+        { value: 'horizontal', label: 'Horizontal (columns)' },
+      ],
+  } } },
+  { name: 'saint_image', selector: { boolean: {} } },
+  { name: 'saint_image_height', selector: { number: {
+      min: 60, max: 400, step: 10, unit_of_measurement: 'px', mode: 'slider',
+  } } },
+  { name: 'start_collapsed', selector: { boolean: {} } },
+  { name: 'show_verse',    selector: { boolean: {} } },
+  { name: 'show_readings', selector: { boolean: {} } },
+  { name: 'show_rosary',   selector: { boolean: {} } },
+  { name: 'show_prayer',   selector: { boolean: {} } },
+  { name: 'show_saint',    selector: { boolean: {} } },
+];
+
+const EDITOR_LABELS = {
+  layout: 'Layout',
+  saint_image: 'Show saint image',
+  saint_image_height: 'Saint image height',
+  start_collapsed: 'Start with sections collapsed',
+  show_verse: 'Show scripture verse',
+  show_readings: 'Show daily Mass readings',
+  show_rosary: 'Show Rosary mysteries',
+  show_prayer: 'Show prayer for little ones',
+  show_saint: 'Show saint of the day',
+};
+
+class CatholicDailyCardEditor extends HTMLElement {
+  setConfig(config) {
+    this._config = normalizeCardConfig(config);
+    this._render();
+  }
+
+  set hass(hass) {
+    this._hass = hass;
+    if (this._form) this._form.hass = hass;
+  }
+
+  _render() {
+    if (!this._form) {
+      this._form = document.createElement('ha-form');
+      this._form.computeLabel = (s) => EDITOR_LABELS[s.name] || s.name;
+      this._form.addEventListener('value-changed', (ev) => {
+        ev.stopPropagation();
+        this.dispatchEvent(new CustomEvent('config-changed', {
+          detail: { config: ev.detail.value },
+          bubbles: true,
+          composed: true,
+        }));
+      });
+      this.appendChild(this._form);
+    }
+    this._form.schema = EDITOR_SCHEMA;
+    this._form.data = this._config;
+    if (this._hass) this._form.hass = this._hass;
+  }
+}
+
+customElements.define('catholic-daily-card-editor', CatholicDailyCardEditor);
+
 // ─── Card Rendering ──────────────────────────────────────────────────────────
 
 class CatholicDailyCard extends HTMLElement {
@@ -1009,8 +1301,16 @@ class CatholicDailyCard extends HTMLElement {
     this._lastDate = null;
   }
 
+  static getStubConfig() {
+    return { layout: 'vertical' };
+  }
+
+  static getConfigElement() {
+    return document.createElement('catholic-daily-card-editor');
+  }
+
   setConfig(config) {
-    this._config = config || {};
+    this._config = normalizeCardConfig(config);
     this._lastDate = null; // force re-render when options change
     this._tryRender();
   }
@@ -1163,7 +1463,12 @@ class CatholicDailyCard extends HTMLElement {
     const accent = liturgy.color;
     const accentLight = accent + '22'; // ~13% opacity hex
 
-    const horizontal = this._config?.layout === 'horizontal';
+    const cfg = this._config || normalizeCardConfig({});
+    const horizontal = cfg.layout === 'horizontal';
+    const open = cfg.start_collapsed ? '' : ' open';
+    const hidden = cfg.start_collapsed ? ' hidden' : '';
+    const columns = ['show_readings','show_rosary','show_prayer','show_saint']
+      .filter(k => cfg[k]).length || 1;
     const readingsLink = (readings && readings.link) || 'https://bible.usccb.org/bible/readings';
     const readingsHtml = this._buildReadingsHtml(readings, now, liturgy, readingsLink);
 
@@ -1411,6 +1716,21 @@ class CatholicDailyCard extends HTMLElement {
         }
 
         /* ── Saint of the Day ── */
+        .saint-art {
+          height: ${cfg.saint_image_height}px;
+          margin-bottom: 12px;
+          border-radius: 12px;
+          overflow: hidden;
+          background: ${accent}12;
+          display: ${cfg.saint_image ? 'block' : 'none'};
+        }
+        .saint-art img, .saint-art svg {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          object-position: center 30%;
+          display: block;
+        }
         .saint-name {
           font-size: 17px;
           font-weight: 700;
@@ -1506,7 +1826,7 @@ class CatholicDailyCard extends HTMLElement {
         .card.horizontal .verse-text { font-size: 12px; margin-bottom: 2px; }
         .card.horizontal .body {
           display: grid;
-          grid-template-columns: repeat(4, 1fr);
+          grid-template-columns: repeat(${columns}, 1fr);
         }
         .card.horizontal .body .section {
           border-bottom: none;
@@ -1545,42 +1865,42 @@ class CatholicDailyCard extends HTMLElement {
           <span class="cycle-badge">Year ${liturgy.cycle}</span>
         </div>
 
-        <div class="verse-bar">
+${cfg.show_verse ? `        <div class="verse-bar">
           <div class="verse-text">&ldquo;${verse.text}&rdquo;</div>
           <div class="verse-ref">— ${verse.ref} (RSV-CE)</div>
-        </div>
+        </div>` : ''}
         </div>
 
         <div class="body">
-        <div class="section">
+${cfg.show_readings ? `        <div class="section">
           <button class="section-toggle" onclick="this.nextElementSibling.classList.toggle('hidden');this.querySelector('.section-chevron').classList.toggle('open')">
             <span class="section-left"><span>📖</span> Daily Mass Readings</span>
-            <span class="section-chevron open">▶</span>
+            <span class="section-chevron${open}">▶</span>
           </button>
-          <div class="section-body">
+          <div class="section-body${hidden}">
             ${readingsHtml}
           </div>
-        </div>
+        </div>` : ''}
 
-        <div class="section">
+${cfg.show_rosary ? `        <div class="section">
           <button class="section-toggle" onclick="this.nextElementSibling.classList.toggle('hidden');this.querySelector('.section-chevron').classList.toggle('open')">
             <span class="section-left"><span>📿</span> Mysteries of the Rosary</span>
-            <span class="section-chevron open">▶</span>
+            <span class="section-chevron${open}">▶</span>
           </button>
-          <div class="section-body">
+          <div class="section-body${hidden}">
             <div class="rosary-wrap">
               <div class="rosary-mystery-name">${rosary.subtitle}</div>
               <div class="rosary-days">${rosary.days}</div>
             </div>
           </div>
-        </div>
+        </div>` : ''}
 
-        <div class="section">
+${cfg.show_prayer ? `        <div class="section">
           <button class="section-toggle" onclick="this.nextElementSibling.classList.toggle('hidden');this.querySelector('.section-chevron').classList.toggle('open')">
             <span class="section-left"><span>🙏</span> Prayer for Little Ones</span>
-            <span class="section-chevron open">▶</span>
+            <span class="section-chevron${open}">▶</span>
           </button>
-          <div class="section-body">
+          <div class="section-body${hidden}">
             <div class="prayer-name">${prayer.name}</div>
             <div class="prayer-lang">${prayer.language}</div>
             <details class="prayer-details">
@@ -1588,17 +1908,17 @@ class CatholicDailyCard extends HTMLElement {
               <div class="prayer-text">${this._escapeHtml(prayer.text)}</div>
             </details>
           </div>
-        </div>
+        </div>` : ''}
 
-        <div class="section">
+${cfg.show_saint ? `        <div class="section">
           <button class="section-toggle" onclick="this.nextElementSibling.classList.toggle('hidden');this.querySelector('.section-chevron').classList.toggle('open')">
             <span class="section-left"><span>👑</span> Saint of the Day</span>
-            <span class="section-chevron open">▶</span>
+            <span class="section-chevron${open}">▶</span>
           </button>
-          <div class="section-body">
+          <div class="section-body${hidden}">
             ${this._buildSaintHtml()}
           </div>
-        </div>
+        </div>` : ''}
         </div>
 
       </div>
@@ -1663,7 +1983,15 @@ class CatholicDailyCard extends HTMLElement {
       ? `<a class="saint-link" href="${e(s.url)}" target="_blank" rel="noopener">Read more →</a>`
       : '';
 
+    // A photo from the feed when there is one; the drawn archetype otherwise.
+    // If the photo 404s the illustration is swapped in at load time.
+    const art = s.imageUrl
+      ? `<img src="${e(s.imageUrl)}" alt="${e(s.name)}" loading="lazy"
+             onerror="this.parentElement.innerHTML=this.parentElement.dataset.fallback">`
+      : getIllustration(s);
+
     return `
+      <div class="saint-art" data-fallback="${e(getIllustration(s))}">${art}</div>
       <div class="saint-name">${e(s.name)}</div>
       ${s.feast ? `<div class="saint-feast">${e(s.feast)}</div>` : ''}
       ${tags ? `<div class="saint-tags">${tags}</div>` : ''}
