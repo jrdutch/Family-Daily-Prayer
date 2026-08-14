@@ -804,6 +804,202 @@ function getDailyPrayer(date, liturgy) {
   return KIDS_PRAYERS[dayOfYear % KIDS_PRAYERS.length];
 }
 
+// ─── Saint of the Day ────────────────────────────────────────────────────────
+// Ported from the standalone saint-of-day-card so the two cards can live as
+// one. Curated dates below are authoritative for rank, tags and quote; the
+// uCatholic feed fills in every other day of the year.
+
+const SAINTS = {
+  '01-01': { name:'Mary, Mother of God', feast:'Solemnity', tags:['Solemnity','Blessed Virgin Mary','Holy Day of Obligation'], bio:'January 1st honors Mary as the Mother of God (Theotokos), proclaimed at the Council of Ephesus in 431 AD. This is the oldest Marian feast in the Western Church, celebrating her unique role as the mother of Jesus Christ.', quote:'My soul magnifies the Lord, and my spirit rejoices in God my Savior.', quoteSource:'Luke 1:46–47', url:'https://en.wikipedia.org/wiki/Mary,_mother_of_Jesus' },
+  '01-17': { name:'Saint Anthony the Great', feast:'Memorial', tags:['Desert Father','Monk','Abbot'], bio:'Anthony (251–356 AD) was an Egyptian Christian monk known as the "Father of Monasticism." He withdrew into the desert and is said to have lived to 105 years old, inspiring countless monastic communities.', quote:'Humility is the foundation of all the other virtues.', quoteSource:'St. Anthony the Great', url:'https://en.wikipedia.org/wiki/Anthony_the_Great' },
+  '01-24': { name:'Saint Francis de Sales', feast:'Memorial', tags:['Bishop','Doctor of the Church','Writer'], bio:'Francis de Sales (1567–1622) was the Bishop of Geneva and a prolific spiritual writer. His "Introduction to the Devout Life" remains a beloved guide to holiness for lay people. He is the patron saint of writers and journalists.', quote:'Nothing is so strong as gentleness, nothing so gentle as real strength.', quoteSource:'St. Francis de Sales', url:'https://en.wikipedia.org/wiki/Francis_de_Sales' },
+  '01-28': { name:'Saint Thomas Aquinas', feast:'Memorial', tags:['Doctor of the Church','Friar','Theologian'], bio:'Thomas Aquinas (1225–1274) was an Italian Dominican friar whose "Summa Theologiae" synthesized Christian theology with Aristotelian philosophy. He is the patron saint of students and universities.', quote:'The things that we love tell us what we are.', quoteSource:'St. Thomas Aquinas', url:'https://en.wikipedia.org/wiki/Thomas_Aquinas' },
+  '02-14': { name:'Saints Cyril and Methodius', feast:'Feast Day', tags:['Apostles to the Slavs','Missionaries','Doctors of the Church'], bio:'Cyril (826–869) and Methodius (815–885) were Greek brothers who evangelized the Slavic peoples. Cyril created the Glagolitic alphabet so scripture could be translated into the Slavic language. They are co-patrons of Europe.', quote:'Among peoples there is only one God, one faith, one baptism.', quoteSource:'St. Cyril', url:'https://en.wikipedia.org/wiki/Saints_Cyril_and_Methodius' },
+  '03-17': { name:'Saint Patrick', feast:'Feast Day', tags:['Bishop','Patron of Ireland','Missionary'], bio:'Patrick (385–461 AD) was kidnapped into Irish slavery at 16. After escaping, he returned as a missionary, converting thousands, ordaining priests, and establishing the Church throughout Ireland.', quote:'Christ with me, Christ before me, Christ behind me, Christ in me.', quoteSource:"St. Patrick's Breastplate", url:'https://en.wikipedia.org/wiki/Saint_Patrick' },
+  '03-19': { name:'Saint Joseph', feast:'Solemnity', tags:['Solemnity','Patron of the Universal Church','Worker'], bio:'Joseph was the husband of the Virgin Mary and foster father of Jesus Christ. A carpenter from Nazareth, he protected the Holy Family and raised Jesus with great love. He is patron of the Universal Church, workers, and fathers.', quote:'Joseph did as the angel of the Lord commanded him.', quoteSource:'Matthew 1:24', url:'https://en.wikipedia.org/wiki/Saint_Joseph' },
+  '03-25': { name:'Annunciation of the Lord', feast:'Solemnity', tags:['Solemnity','Blessed Virgin Mary','Incarnation'], bio:"The Annunciation celebrates the angel Gabriel's announcement to Mary that she would conceive the Son of God. Mary's \"fiat\" marks the moment of the Incarnation, nine months before Christmas.", quote:'Behold, I am the handmaid of the Lord. Let it be done to me according to your word.', quoteSource:'Luke 1:38', url:'https://en.wikipedia.org/wiki/Annunciation' },
+  '04-23': { name:'Saint George', feast:'Optional Memorial', tags:['Martyr','Patron of England','Soldier'], bio:'George (died c. 303 AD) was a Roman soldier who refused to renounce his faith under Emperor Diocletian and was martyred. He is patron of England, Georgia, Portugal, and many other nations.', quote:'I am a Christian, and I will not deny my faith.', quoteSource:'St. George (traditional)', url:'https://en.wikipedia.org/wiki/Saint_George' },
+  '04-29': { name:'Saint Catherine of Siena', feast:'Feast Day', tags:['Doctor of the Church','Dominican','Mystic'], bio:'Catherine of Siena (1347–1380) was a Dominican mystic and Doctor of the Church. Her letters urging Pope Gregory XI to return from Avignon helped end the Avignon papacy. She cared for the poor and received the stigmata.', quote:'Be who God meant you to be and you will set the world on fire.', quoteSource:'St. Catherine of Siena', url:'https://en.wikipedia.org/wiki/Catherine_of_Siena' },
+  '06-13': { name:'Saint Anthony of Padua', feast:'Memorial', tags:['Doctor of the Church','Friar','Patron of Lost Things'], bio:'Anthony of Padua (1195–1231) was a Portuguese Franciscan friar renowned for preaching and care for the poor. He is the patron of lost things and was proclaimed a Doctor of the Church within a year of his death.', quote:'Actions speak louder than words; let your words teach and your actions speak.', quoteSource:'St. Anthony of Padua', url:'https://en.wikipedia.org/wiki/Anthony_of_Padua' },
+  '06-21': { name:'Saint Aloysius Gonzaga', feast:'Memorial', tags:['Jesuit','Patron of Youth'], bio:'Aloysius Gonzaga (1568–1591) renounced his title to join the Jesuits and died at 23 caring for plague victims. He is the patron saint of youth and Catholic students.', quote:'I am a piece of crooked iron and I came into religion to be made straight by the hammer of penance.', quoteSource:'St. Aloysius Gonzaga', url:'https://en.wikipedia.org/wiki/Aloysius_Gonzaga' },
+  '06-24': { name:'Birth of Saint John the Baptist', feast:'Solemnity', tags:['Solemnity','Prophet','Forerunner of Christ'], bio:'John the Baptist was the forerunner of Jesus Christ. Born miraculously to Elizabeth and Zechariah, he baptized Jesus in the Jordan. He is the only saint besides Mary whose birth is celebrated as a Solemnity.', quote:'He must increase, but I must decrease.', quoteSource:'John 3:30', url:'https://en.wikipedia.org/wiki/John_the_Baptist' },
+  '06-27': { name:'Saint Cyril of Alexandria', feast:'Memorial', tags:['Bishop','Doctor of the Church','Theologian'], bio:'Cyril of Alexandria (376–444 AD) was Archbishop of Alexandria and one of the most important early Church theologians. He championed the title "Theotokos" for Mary at the Council of Ephesus in 431, defending the unity of Christ\'s divine and human natures.', quote:'We confess our Lord Jesus Christ, the only begotten Son of God, perfect God and perfect man.', quoteSource:'St. Cyril of Alexandria', url:'https://en.wikipedia.org/wiki/Cyril_of_Alexandria' },
+  '06-28': { name:'Saint Irenaeus', feast:'Memorial', tags:['Bishop','Doctor of the Church','Martyr'], bio:'Irenaeus (c. 130–202 AD) was Bishop of Lyon and an early Church Father who combated Gnostic heresies. His "Against Heresies" is one of the earliest expositions of Christian theology.', quote:'The glory of God is man fully alive, and the life of man is the vision of God.', quoteSource:'St. Irenaeus', url:'https://en.wikipedia.org/wiki/Irenaeus' },
+  '06-29': { name:'Saints Peter and Paul', feast:'Solemnity', tags:['Solemnity','Apostles','Martyrs'], bio:'This solemnity celebrates Peter the fisherman, first Pope, and Paul the great missionary. Both were martyred in Rome under Nero. Together they represent the twin pillars of the Catholic Church.', quote:'You are the Christ, the Son of the living God.', quoteSource:'Matthew 16:16', url:'https://en.wikipedia.org/wiki/Feast_of_Saints_Peter_and_Paul' },
+  '07-11': { name:'Saint Benedict', feast:'Feast Day', tags:['Monk','Abbot','Patron of Europe'], bio:'Benedict of Nursia (480–547 AD) founded Western monasticism. His Rule, emphasizing prayer and work ("Ora et Labora"), shaped European civilization for centuries. He is the patron of Europe.', quote:'Prefer nothing whatever to Christ, and may he lead us all together to everlasting life.', quoteSource:'St. Benedict, The Rule', url:'https://en.wikipedia.org/wiki/Benedict_of_Nursia' },
+  '07-22': { name:'Saint Mary Magdalene', feast:'Feast Day', tags:['Apostle to the Apostles','Disciple','Martyr'], bio:'Mary Magdalene was the first witness of the Resurrection, earning the title "Apostle to the Apostles." She remained at the Cross when most apostles fled. Pope Francis elevated her feast to Feast Day in 2016.', quote:'I have seen the Lord!', quoteSource:'John 20:18', url:'https://en.wikipedia.org/wiki/Mary_Magdalene' },
+  '07-25': { name:'Saint James the Apostle', feast:'Feast Day', tags:['Apostle','Martyr','Patron of Spain'], bio:'James, son of Zebedee, was the first apostle martyred, executed by Herod Agrippa around 44 AD. His tomb at Santiago de Compostela became one of the greatest medieval pilgrimage destinations.', quote:'Lord, we will drink the cup you drink.', quoteSource:'Mark 10:39', url:'https://en.wikipedia.org/wiki/James,_son_of_Zebedee' },
+  '08-10': { name:'Saint Lawrence', feast:'Feast Day', tags:['Deacon','Martyr','Patron of the Poor'], bio:'Lawrence (225–258 AD) was a deacon of Rome who, when ordered to surrender Church treasures, presented the poor saying "These are the treasures of the Church." He was martyred by roasting under Emperor Valerian.', quote:'The Church is truly rich, far richer than your emperor.', quoteSource:'St. Lawrence (traditional)', url:'https://en.wikipedia.org/wiki/Saint_Lawrence' },
+  '08-15': { name:'Assumption of the Blessed Virgin Mary', feast:'Solemnity', tags:['Solemnity','Blessed Virgin Mary','Holy Day of Obligation'], bio:'The Assumption celebrates Mary being taken body and soul into heavenly glory. Defined as dogma by Pope Pius XII in 1950, it is one of the most ancient Marian feasts and a Holy Day of Obligation.', quote:'For he who is mighty has done great things for me, and holy is his name.', quoteSource:'Luke 1:49', url:'https://en.wikipedia.org/wiki/Assumption_of_Mary' },
+  '08-28': { name:'Saint Augustine of Hippo', feast:'Memorial', tags:['Bishop','Doctor of the Church','Theologian'], bio:'Augustine (354–430 AD) is one of the greatest theologians in history. His "Confessions" and "City of God" remain masterpieces of world literature. He converted after years of searching and the prayers of his mother, Saint Monica.', quote:'Our heart is restless until it finds its rest in Thee.', quoteSource:'St. Augustine, Confessions', url:'https://en.wikipedia.org/wiki/Augustine_of_Hippo' },
+  '09-08': { name:'Nativity of the Blessed Virgin Mary', feast:'Feast Day', tags:['Feast Day','Blessed Virgin Mary','Marian'], bio:"This feast celebrates the birth of the Virgin Mary, observed nine months after her Immaculate Conception. Mary's birth has been celebrated since the 7th century as the dawn before the Sunrise of salvation.", quote:'Blessed are you among women, and blessed is the fruit of your womb.', quoteSource:'Luke 1:42', url:'https://en.wikipedia.org/wiki/Nativity_of_Mary' },
+  '09-29': { name:'Sts. Michael, Gabriel & Raphael', feast:'Feast Day', tags:['Archangels','Feast Day'], bio:"Michaelmas honors three archangels: Michael the warrior, Gabriel the messenger who announced the Incarnation to Mary, and Raphael the healer. Together they represent God's protection, communication, and healing.", quote:'Behold, I send an angel before you to guard you on the way.', quoteSource:'Exodus 23:20', url:'https://en.wikipedia.org/wiki/Archangel' },
+  '10-01': { name:'Saint Thérèse of Lisieux', feast:'Memorial', tags:['Doctor of the Church','Carmelite','Mystic'], bio:'Thérèse Martin (1873–1897) entered Carmel at 15 and died at 24. Her "Little Way" of doing small things with great love became one of the most influential spiritual paths in modern Catholicism. She is a Doctor of the Church.', quote:'Miss no single opportunity of making some small sacrifice, here by a smiling look, there by a kindly word.', quoteSource:'St. Thérèse of Lisieux', url:'https://en.wikipedia.org/wiki/Th%C3%A9r%C3%A8se_of_Lisieux' },
+  '10-04': { name:'Saint Francis of Assisi', feast:'Memorial', tags:['Friar','Patron of Animals and Ecology'], bio:'Francis of Assisi (1181–1226) renounced wealth to live in radical poverty. He founded the Franciscan Order, received the stigmata, and composed the "Canticle of the Sun." He is patron of animals and ecology.', quote:'Lord, make me an instrument of your peace. Where there is hatred, let me sow love.', quoteSource:'Peace Prayer of St. Francis', url:'https://en.wikipedia.org/wiki/Francis_of_Assisi' },
+  '10-07': { name:'Our Lady of the Rosary', feast:'Memorial', tags:['Memorial','Blessed Virgin Mary','Marian'], bio:"Established after the Christian victory at Lepanto (October 7, 1571), this feast honors Mary as Our Lady of the Rosary. Meditating on the mysteries of Christ's life through repeated prayers is one of the most beloved Catholic devotions.", quote:'The Rosary is the most excellent form of prayer.', quoteSource:'Pope Leo XIII', url:'https://en.wikipedia.org/wiki/Our_Lady_of_the_Rosary' },
+  '10-15': { name:'Saint Teresa of Ávila', feast:'Memorial', tags:['Doctor of the Church','Carmelite','Mystic'], bio:'Teresa of Ávila (1515–1582) was a Spanish Carmelite mystic and reformer. "The Interior Castle" and "The Way of Perfection" are masterpieces of mystical theology. She was the first woman proclaimed Doctor of the Church.', quote:'The important thing is not to think much but to love much.', quoteSource:'St. Teresa of Ávila', url:'https://en.wikipedia.org/wiki/Teresa_of_%C3%81vila' },
+  '11-01': { name:"All Saints' Day", feast:'Solemnity', tags:['Solemnity','Holy Day of Obligation','All Saints'], bio:"All Saints' Day honors every saint — known and unknown — who have attained heavenly glory. This solemnity affirms the Church's belief in the Communion of Saints and the universal call to holiness.", quote:'Blessed are the pure in heart, for they shall see God.', quoteSource:'Matthew 5:8', url:"https://en.wikipedia.org/wiki/All_Saints'_Day" },
+  '11-02': { name:"All Souls' Day", feast:'Commemoration', tags:['Commemoration','Prayer for the Dead'], bio:"All Souls' Day commemorates all the faithful departed, especially those in purgatory. The Church encourages prayer, Masses, and almsgiving for the dead. Established by St. Odilo of Cluny in 998.", quote:'It is a holy and wholesome thought to pray for the dead.', quoteSource:'2 Maccabees 12:46', url:"https://en.wikipedia.org/wiki/All_Souls'_Day" },
+  '11-30': { name:'Saint Andrew', feast:'Feast Day', tags:['Apostle','Martyr','Patron of Scotland and Greece'], bio:"Andrew was Simon Peter's brother and among the first disciples called by Jesus. He was martyred on an X-shaped cross in Patras — now called the Cross of Saint Andrew. He is patron of Scotland and Greece.", quote:'We have found the Messiah.', quoteSource:'John 1:41', url:'https://en.wikipedia.org/wiki/Andrew_the_Apostle' },
+  '12-03': { name:'Saint Francis Xavier', feast:'Memorial', tags:['Jesuit','Missionary','Patron of Missions','Martyr'], bio:'Francis Xavier (1506–1552) was a Spanish Jesuit co-founder of the Society of Jesus. He brought Christianity to India, Southeast Asia, and Japan, baptizing tens of thousands. He is the patron of missionaries.', quote:'It is not the actual physical exertion that counts, but the spirit of faith with which it is undertaken.', quoteSource:'St. Francis Xavier', url:'https://en.wikipedia.org/wiki/Francis_Xavier' },
+  '12-08': { name:'Immaculate Conception', feast:'Solemnity', tags:['Solemnity','Blessed Virgin Mary','Holy Day of Obligation'], bio:'The Immaculate Conception holds that Mary was preserved from original sin from the first moment of her conception. Defined as dogma by Pope Pius IX in 1854, it is the patronal feast of the United States.', quote:'Hail, full of grace, the Lord is with you.', quoteSource:'Luke 1:28', url:'https://en.wikipedia.org/wiki/Immaculate_Conception' },
+  '12-12': { name:'Our Lady of Guadalupe', feast:'Feast Day', tags:['Feast Day','Blessed Virgin Mary','Patron of the Americas'], bio:'In 1531 the Virgin Mary appeared to Saint Juan Diego and left her image on his cloak. She is Patron of the Americas and is venerated at the Basilica of Guadalupe, the most visited Catholic shrine in the world.', quote:'Am I not here, I who am your Mother?', quoteSource:'Our Lady of Guadalupe to Juan Diego', url:'https://en.wikipedia.org/wiki/Our_Lady_of_Guadalupe' },
+  '12-25': { name:'Nativity of Our Lord Jesus Christ', feast:'Solemnity – Christmas', tags:['Solemnity','Holy Day of Obligation','Christmas'], bio:'Christmas commemorates the birth of Jesus Christ in Bethlehem, the fulfillment of centuries of prophecy. The eternal Son of God became human through the Virgin Mary — the Incarnation at the heart of the Christian faith.', quote:'For unto you is born this day in the city of David a Savior, who is Christ the Lord.', quoteSource:'Luke 2:11', url:'https://en.wikipedia.org/wiki/Christmas' },
+  '12-26': { name:'Saint Stephen', feast:'Feast Day', tags:['Deacon','Martyr','Protomartyr'], bio:'Stephen was the first Christian martyr, stoned to death in Jerusalem. As he died he prayed for his killers, echoing Christ on the Cross. The young Saul of Tarsus — later St. Paul — witnessed the stoning.', quote:'Lord Jesus, receive my spirit. Lord, do not hold this sin against them.', quoteSource:'Acts 7:59–60', url:'https://en.wikipedia.org/wiki/Saint_Stephen' },
+  '12-27': { name:'Saint John the Apostle', feast:'Feast Day', tags:['Apostle','Evangelist','Beloved Disciple'], bio:"John was Jesus' Beloved Disciple and the only apostle to remain at the foot of the Cross. He wrote the Fourth Gospel, three Epistles, and the Book of Revelation, and is the only apostle believed to have died of natural causes.", quote:'God so loved the world that he gave his only Son, that everyone who believes in him might have eternal life.', quoteSource:'John 3:16', url:'https://en.wikipedia.org/wiki/John_the_Apostle' },
+};
+
+function parseRSS(xml) {
+  const doc = new DOMParser().parseFromString(xml, 'application/xml');
+  const perr = doc.querySelector('parsererror');
+  if (perr) {
+    console.info('CatholicDailyCard: saint feed: XML parser error: ' + perr.textContent.replace(/\s+/g, ' ').slice(0, 200));
+    return null;
+  }
+  const items = Array.from(doc.getElementsByTagName('item'));
+  if (!items.length) { console.info('CatholicDailyCard: saint feed: feed contained no <item> elements'); return null; }
+
+  const item = pickFreshest(
+    preferSaintItems(items, it => it.getElementsByTagName('link')[0]?.textContent),
+    it => parseFeedDate(it.getElementsByTagName('pubDate')[0]?.textContent));
+  if (!item) return null;
+
+  // getElementsByTagName handles the media: namespace reliably; querySelector doesn't.
+  const g = tag => item.getElementsByTagName(tag)[0]?.textContent?.trim() || '';
+  const title = g('title');
+  if (!title) { console.info('CatholicDailyCard: saint feed: feed item has no title'); return null; }
+  const link = g('link') || 'https://www.catholic.org/saints/';
+
+  // WordPress feeds carry the full post in content:encoded and often lack
+  // media:content; rss.app puts everything in description. Handle both.
+  let imageUrl = item.getElementsByTagName('media:content')[0]?.getAttribute('url') ||
+                 item.getElementsByTagName('enclosure')[0]?.getAttribute('url') || '';
+  const tmp = document.createElement('div');
+  tmp.innerHTML = g('content:encoded') || g('description');
+  if (!imageUrl) imageUrl = tmp.querySelector('img')?.src || '';
+  tmp.querySelectorAll('img').forEach(el => el.remove());
+  let bio = tmp.textContent.replace(/\s+/g, ' ').replace(/The post .* appeared first on .*$/, '').trim();
+  if (bio.length > 480) {
+    const cut = bio.slice(0, 480);
+    const end = cut.lastIndexOf('. ');
+    bio = end > 200 ? cut.slice(0, end + 1) : cut + '…';
+  }
+
+  return { name: title, feast: 'Feast Day', tags: ['Catholic', 'Saint of the Day'], bio: bio || 'Visit the link below to read the full biography.', url: link, imageUrl, source: 'uCatholic' };
+}
+
+// Two sources: uCatholic's own WordPress feed (primary) and the rss.app
+// mirror of it (backup). For each, try rss2json.com first — it fetches the
+// feed server-side and returns JSON with CORS enabled — then the direct URL,
+// then generic CORS relays.
+const FEEDS = [
+  'https://ucatholic.com/feed/',
+  'https://rss.app/feeds/1tWSQDMDaOnerbi9.xml',
+];
+
+// uCatholic's main feed mixes saint posts (linked under /saints/) with other
+// articles — restrict to saint items when any are present.
+function preferSaintItems(items, linkOf) {
+  const saints = items.filter(it => /\/saints?\//.test(linkOf(it) || ''));
+  return saints.length ? saints : items;
+}
+const FEED_ATTEMPTS = FEEDS.flatMap(f => {
+  const enc = encodeURIComponent(f);
+  return [
+    { url: 'https://api.rss2json.com/v1/api.json?rss_url=' + enc, rss2json: true },
+    { url: f },
+    { url: 'https://corsproxy.io/?url=' + enc },
+    { url: 'https://api.allorigins.win/get?url=' + enc, json: true },
+  ];
+});
+
+// Dates arrive in RFC-822 ("Sun, 12 Jul 2026 04:03:00 GMT") or SQL-ish
+// ("2026-07-12 04:03:00") form depending on the source — accept both.
+function parseFeedDate(s) {
+  let d = new Date(String(s || ''));
+  if (isNaN(d)) d = new Date(String(s || '').replace(' ', 'T') + 'Z');
+  return d;
+}
+
+// Items may not be ordered newest-first, and the day's saint can be published
+// the previous evening in local time — so prefer an item dated today, else
+// take the newest item by pubDate as long as it is reasonably fresh (< 48h).
+function pickFreshest(items, pubOf) {
+  const now = new Date();
+  const sameDay = d => !isNaN(d) && d.getFullYear() === now.getFullYear() &&
+                       d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+  const todays = items.find(it => sameDay(pubOf(it)));
+  if (todays) return todays;
+  let best = null, bestT = -Infinity;
+  for (const it of items) {
+    const t = pubOf(it).getTime();
+    if (!isNaN(t) && t > bestT) { bestT = t; best = it; }
+  }
+  if (!best || now - bestT > 48 * 3600 * 1000) {
+    console.info(`CatholicDailyCard: saint feed: feed has ${items.length} item(s); newest pubDate = ` +
+                 `${best ? new Date(bestT).toString() : 'unparseable'} — too stale, ignoring.`);
+    return null;
+  }
+  return best;
+}
+
+function parseRSS2JSON(data) {
+  if (!data || data.status !== 'ok' || !Array.isArray(data.items) || !data.items.length) {
+    console.info('CatholicDailyCard: saint feed: rss2json response not usable (status/items)');
+    return null;
+  }
+  const item = pickFreshest(preferSaintItems(data.items, it => it.link),
+                            it => parseFeedDate(it.pubDate));
+  if (!item) return null;
+  const title = (item.title || '').trim();
+  if (!title) return null;
+  let imageUrl = item.thumbnail || item.enclosure?.link || '';
+  const tmp = document.createElement('div');
+  tmp.innerHTML = item.description || item.content || '';
+  if (!imageUrl) imageUrl = tmp.querySelector('img')?.src || '';
+  tmp.querySelectorAll('img').forEach(el => el.remove());
+  let bio = tmp.textContent.replace(/\s+/g, ' ').replace(/The post .* appeared first on .*$/, '').trim();
+  if (bio.length > 480) {
+    const cut = bio.slice(0, 480);
+    const end = cut.lastIndexOf('. ');
+    bio = end > 200 ? cut.slice(0, end + 1) : cut + '…';
+  }
+  return { name: title, feast: 'Feast Day', tags: ['Catholic', 'Saint of the Day'], bio: bio || 'Visit the link below to read the full biography.', url: item.link || 'https://www.catholic.org/saints/', imageUrl, source: 'uCatholic' };
+}
+
+async function fetchSaint() {
+  console.info('CatholicDailyCard: fetching saint feed…');
+  for (const a of FEED_ATTEMPTS) {
+    const host = new URL(a.url).host;
+    try {
+      const r = await fetch(a.url, { signal: AbortSignal.timeout(8000) });
+      if (!r.ok) { console.info(`CatholicDailyCard: saint feed: ${host} → HTTP ${r.status}`); continue; }
+      let saint, bodyPreview = '';
+      if (a.rss2json) {
+        const data = await r.json();
+        saint = parseRSS2JSON(data);
+        if (!saint) bodyPreview = JSON.stringify(data).slice(0, 120);
+      } else {
+        const xml = a.json ? (await r.json()).contents : await r.text();
+        saint = xml ? parseRSS(xml) : null;
+        if (!saint) bodyPreview = String(xml).slice(0, 120);
+      }
+      console.info(`CatholicDailyCard: saint feed: ${host} → 200, parsed=${!!saint}` +
+                   (saint ? '' : `, body starts: ${bodyPreview}`));
+      if (saint) return saint;
+    } catch (e) {
+      console.info(`CatholicDailyCard: saint feed: ${host} → ${e.name}: ${e.message}`);
+    }
+  }
+  console.info('CatholicDailyCard: saint feed: all feed attempts failed, using cached/embedded data.');
+  return null;
+}
+
+function saintTodayKey() {
+  const d = new Date();
+  return String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+
 // ─── Card Rendering ──────────────────────────────────────────────────────────
 
 class CatholicDailyCard extends HTMLElement {
@@ -823,8 +1019,65 @@ class CatholicDailyCard extends HTMLElement {
     return this._config?.layout === 'horizontal' ? 5 : 10;
   }
 
+  // Sections dashboards ask the card how wide it wants to be. The horizontal
+  // layout asks for the whole row — that is the entire point of it — so it no
+  // longer needs `grid_options: columns: full` set by hand.
+  getGridOptions() {
+    return this._config?.layout === 'horizontal'
+      ? { columns: 'full', rows: 'auto', min_columns: 6 }
+      : { columns: 12, rows: 'auto', min_columns: 4 };
+  }
+
   set hass(hass) {
     this._hass = hass;
+    if (!this._saintLoaded) {
+      this._saintLoaded = true;
+      this._loadSaint();
+    }
+    this._tryRender();
+  }
+
+  // The saint feed is fetched once per day and cached in localStorage. If the
+  // network is unreachable (Home Assistant's CSP blocks some relays) we fall
+  // back to the curated table, so a saint always renders.
+  async _loadSaint() {
+    const CACHE_KEY = 'catholic-daily-card-saint';
+    let saint = null;
+
+    try {
+      const c = JSON.parse(localStorage.getItem(CACHE_KEY));
+      if (c && c.key === saintTodayKey()) saint = c.saint;
+    } catch (_) {}
+
+    if (!saint) {
+      saint = await fetchSaint();
+      if (saint) {
+        try {
+          localStorage.setItem(CACHE_KEY, JSON.stringify({ key: saintTodayKey(), saint }));
+        } catch (_) {}
+      }
+    }
+
+    // The feed only gives a name and a blurb — the curated entry carries the
+    // real rank, tags and quote, so let it win where the two overlap.
+    const embedded = SAINTS[saintTodayKey()];
+    if (saint && embedded) {
+      saint.tags = embedded.tags;
+      saint.feast = embedded.feast;
+      if (!saint.quote) { saint.quote = embedded.quote; saint.quoteSource = embedded.quoteSource; }
+    }
+
+    this._saint = saint || embedded || {
+      name: 'Saints of the Roman Calendar',
+      feast: 'Feast Day',
+      tags: ['Holy Men and Women'],
+      bio: 'The Church honors saints every day of the year — holy men and women who bore witness to Christ through heroic virtue.',
+      quote: 'To be a saint is not a luxury but a necessity.',
+      quoteSource: 'Pope St. John Paul II',
+      url: 'https://www.catholic.org/saints/',
+    };
+
+    this._lastDate = null; // force a repaint now that the saint is known
     this._tryRender();
   }
 
@@ -1157,6 +1410,71 @@ class CatholicDailyCard extends HTMLElement {
           font-family: Georgia, serif;
         }
 
+        /* ── Saint of the Day ── */
+        .saint-name {
+          font-size: 17px;
+          font-weight: 700;
+          font-family: Georgia, serif;
+          line-height: 1.3;
+          margin-bottom: 4px;
+        }
+        .saint-feast {
+          font-size: 10px;
+          color: var(--secondary-text-color, #999);
+          text-transform: uppercase;
+          letter-spacing: 1px;
+          margin-bottom: 8px;
+        }
+        .saint-tags {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 5px;
+          margin-bottom: 10px;
+        }
+        .saint-tag {
+          background: ${accent}1e;
+          border: 1px solid ${accent}55;
+          color: ${accent};
+          border-radius: 20px;
+          padding: 2px 9px;
+          font-size: 10px;
+          font-weight: 700;
+          letter-spacing: 0.3px;
+        }
+        .saint-bio {
+          font-size: 13px;
+          line-height: 1.65;
+        }
+        .saint-quote {
+          margin-top: 10px;
+          padding: 10px 14px;
+          background: ${accent}11;
+          border-left: 3px solid ${accent};
+          border-radius: 10px;
+          font-family: Georgia, serif;
+          font-style: italic;
+          font-size: 13px;
+          line-height: 1.6;
+        }
+        .saint-quote-src {
+          display: block;
+          margin-top: 5px;
+          font-style: normal;
+          font-size: 10px;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+          color: ${accent};
+        }
+        .saint-link {
+          display: inline-block;
+          margin-top: 10px;
+          font-size: 12px;
+          color: ${accent};
+          text-decoration: none;
+        }
+        .saint-link:hover { text-decoration: underline; }
+
         /* ── Horizontal layout ── */
         .card.horizontal .header {
           display: flex;
@@ -1188,7 +1506,7 @@ class CatholicDailyCard extends HTMLElement {
         .card.horizontal .verse-text { font-size: 12px; margin-bottom: 2px; }
         .card.horizontal .body {
           display: grid;
-          grid-template-columns: 1fr 1fr 1fr;
+          grid-template-columns: repeat(4, 1fr);
         }
         .card.horizontal .body .section {
           border-bottom: none;
@@ -1271,6 +1589,16 @@ class CatholicDailyCard extends HTMLElement {
             </details>
           </div>
         </div>
+
+        <div class="section">
+          <button class="section-toggle" onclick="this.nextElementSibling.classList.toggle('hidden');this.querySelector('.section-chevron').classList.toggle('open')">
+            <span class="section-left"><span>👑</span> Saint of the Day</span>
+            <span class="section-chevron open">▶</span>
+          </button>
+          <div class="section-body">
+            ${this._buildSaintHtml()}
+          </div>
+        </div>
         </div>
 
       </div>
@@ -1317,6 +1645,34 @@ class CatholicDailyCard extends HTMLElement {
     </div>`;
   }
 
+  _buildSaintHtml() {
+    const s = this._saint;
+    if (!s) return `<div class="saint-bio">Loading today's saint…</div>`;
+    const e = (t) => this._escapeHtml(String(t));
+
+    const tags = (s.tags || [])
+      .map(t => `<span class="saint-tag">${e(t)}</span>`).join('');
+
+    const quote = s.quote ? `
+      <div class="saint-quote">
+        &ldquo;${e(s.quote)}&rdquo;
+        ${s.quoteSource ? `<span class="saint-quote-src">— ${e(s.quoteSource)}</span>` : ''}
+      </div>` : '';
+
+    const link = s.url
+      ? `<a class="saint-link" href="${e(s.url)}" target="_blank" rel="noopener">Read more →</a>`
+      : '';
+
+    return `
+      <div class="saint-name">${e(s.name)}</div>
+      ${s.feast ? `<div class="saint-feast">${e(s.feast)}</div>` : ''}
+      ${tags ? `<div class="saint-tags">${tags}</div>` : ''}
+      <div class="saint-bio">${e(s.bio || '')}</div>
+      ${quote}
+      ${link}
+    `;
+  }
+
   _seasonIcon(season) {
     const icons = {
       advent: '🕯️',
@@ -1334,7 +1690,9 @@ class CatholicDailyCard extends HTMLElement {
     return str
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;');
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   }
 }
 
