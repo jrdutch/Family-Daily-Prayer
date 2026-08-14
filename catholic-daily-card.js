@@ -843,17 +843,61 @@ class CatholicDailyCard extends HTMLElement {
     }, midnight - now);
   }
 
+  _getReadingsFromHass() {
+    const sensor = this._hass?.states?.['sensor.usccb_daily_readings'];
+    if (!sensor || sensor.state === 'unavailable') return null;
+    const a = sensor.attributes;
+
+    // Format A: pre-parsed fields
+    if (a.gospel) {
+      return {
+        label:  a.label  || null,
+        first:  a.first  || null,
+        psalm:  a.psalm  || null,
+        second: a.second || null,
+        gospel: a.gospel,
+        link:   a.link   || 'https://bible.usccb.org/bible/readings',
+      };
+    }
+
+    // Format B: rss2json.com rest sensor — description holds the full HTML
+    if (a.description) {
+      const doc = new DOMParser().parseFromString(a.description, 'text/html');
+      const link = a.link || 'https://bible.usccb.org/bible/readings';
+      const label = (a.title || sensor.state || '')
+        .replace(/^[A-Z][a-z]+ \d{1,2},?\s*\d{4}\s*[-–—]?\s*/i, '').trim() || null;
+      const result = { label, link };
+
+      for (const h4 of doc.querySelectorAll('h4')) {
+        const heading = h4.textContent.trim();
+        const citation = h4.querySelector('a')?.textContent?.trim() || '';
+        if (!citation) continue;
+        if (/^Reading I(?!I)/i.test(heading))           result.first  = citation;
+        else if (/Responsorial\s+Psalm/i.test(heading)) result.psalm  = citation;
+        else if (/^Reading II/i.test(heading))          result.second = citation;
+        else if (/^Gospel/i.test(heading))              result.gospel = citation;
+      }
+
+      return result.gospel ? result : null;
+    }
+
+    return null;
+  }
+
   _tryRender() {
     const today = new Date().toDateString();
-    if (today === this._lastDate) return;
+    const hassReadings = this._getReadingsFromHass();
+    const readingsChanged =
+      JSON.stringify(hassReadings) !== JSON.stringify(this._lastHassReadings);
+    if (today === this._lastDate && !readingsChanged) return;
     this._lastDate = today;
+    this._lastHassReadings = hassReadings;
     this._render(new Date());
   }
 
   _render(now) {
     const liturgy = getLiturgicalInfo(now);
-    const hassReadings = this._getReadingsFromHass ? this._getReadingsFromHass() : null;
-    const readings = hassReadings || getMassReadings(now, liturgy);
+    const readings = this._getReadingsFromHass() || getMassReadings(now, liturgy);
     const rosaryKey = DAY_TO_MYSTERY[now.getDay()];
     const rosary = ROSARY_MYSTERIES[rosaryKey];
     const prayer = getDailyPrayer(now, liturgy);
