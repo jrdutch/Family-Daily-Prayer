@@ -534,12 +534,12 @@ function getLiturgicalInfo(date) {
     const feast = FIXED_FEASTS[mmdd];
     season = 'feast';
     seasonLabel = feast.label;
-    // Color by feast type. Marian feasts take the blue traditionally used for
-    // Our Lady, matched on the label so a newly added Marian feast picks it up
-    // without another special case here.
-    if (mmdd === '12-25') { color = '#8B6914'; }
-    else if (isMarianFeast(feast.label)) { color = '#1565C0'; }
-    else { color = '#6A0DAD'; }
+    // Marian feasts take the blue traditionally used for Our Lady, matched on
+    // the label so one added later picks it up without a new special case.
+    // Every other entry here is a solemnity of the Lord or of the saints,
+    // which is white/gold — the old purple default was a penitential color and
+    // never right for these.
+    color = isMarianFeast(feast.label) ? '#1565C0' : '#8B6914';
     return { season, seasonLabel, color, cycle, weekdayCycle, week: 0, litYear, feast };
   }
 
