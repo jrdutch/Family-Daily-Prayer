@@ -233,6 +233,13 @@ const SUNDAY_READINGS = {
 };
 
 // Special solemnities that always override Sunday readings
+// Feasts of Our Lady, by title. Covers the Marian solemnities in
+// FIXED_FEASTS today and the usual wording of the others.
+function isMarianFeast(label) {
+  return /blessed virgin|our lady|\bmary\b|marian|assumption|immaculate conception|annunciation|visitation|guadalupe|queenship|presentation of the blessed/i
+    .test(label || '');
+}
+
 const FIXED_FEASTS = {
   '01-01': { label: 'Solemnity of Mary, Mother of God', first: 'Nm 6:22-27', psalm: 'Ps 67', second: 'Gal 4:4-7', gospel: 'Lk 2:16-21' },
   '08-15': { label: 'Assumption of the Blessed Virgin Mary', first: 'Rev 11:19a; 12:1-6a, 10ab', psalm: 'Ps 45', second: '1 Cor 15:20-27', gospel: 'Lk 1:39-56' },
@@ -527,9 +534,11 @@ function getLiturgicalInfo(date) {
     const feast = FIXED_FEASTS[mmdd];
     season = 'feast';
     seasonLabel = feast.label;
-    // Color by feast type
+    // Color by feast type. Marian feasts take the blue traditionally used for
+    // Our Lady, matched on the label so a newly added Marian feast picks it up
+    // without another special case here.
     if (mmdd === '12-25') { color = '#8B6914'; }
-    else if (mmdd === '12-08') { color = '#1565C0'; }
+    else if (isMarianFeast(feast.label)) { color = '#1565C0'; }
     else { color = '#6A0DAD'; }
     return { season, seasonLabel, color, cycle, weekdayCycle, week: 0, litYear, feast };
   }
