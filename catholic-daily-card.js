@@ -1339,24 +1339,84 @@ class CatholicDailyCard extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
+
+    // A saint sensor is the most reliable source, so pick it up as soon as it
+    // appears (and whenever it changes) rather than only on first load.
+    const fromSensor = this._getSaintFromHass();
+    if (fromSensor && fromSensor.name !== this._saint?.name) {
+      this._saint = this._enrichSaint(fromSensor);
+      this._saintLoaded = true;
+      this._lastDate = null;
+    }
+
     if (!this._saintLoaded) {
       this._saintLoaded = true;
       this._loadSaint();
     }
+
     this._tryRender();
   }
 
-  // The saint feed is fetched once per day and cached in localStorage. If the
-  // network is unreachable (Home Assistant's CSP blocks some relays) we fall
-  // back to the curated table, so a saint always renders.
+  // Preferred source: a Home Assistant REST sensor that fetches the feed
+  // server-side. Home Assistant's CSP blocks the browser from reaching the
+  // feed directly, so this is the only path that works reliably.
+  _getSaintFromHass() {
+    const sensor = this._hass?.states?.['sensor.saint_of_the_day'];
+    if (!sensor || sensor.state === 'unavailable') return null;
+    const a = sensor.attributes || {};
+
+    // The state can read "unknown" while the attributes are already populated,
+    // so trust the attributes and only fall back to the state for the title.
+    const name = (a.title || (sensor.state !== 'unknown' ? sensor.state : '') || '').trim();
+    if (!name) return null;
+
+    const tmp = document.createElement('div');
+    tmp.innerHTML = a.description || '';
+    let imageUrl = a.thumbnail || tmp.querySelector('img')?.src || '';
+    tmp.querySelectorAll('img').forEach(el => el.remove());
+    let bio = tmp.textContent.replace(/\s+/g, ' ')
+      .replace(/The post .* appeared first on .*$/, '').trim();
+    if (bio.length > 480) {
+      const cut = bio.slice(0, 480);
+      const end = cut.lastIndexOf('. ');
+      bio = end > 200 ? cut.slice(0, end + 1) : cut + '…';
+    }
+
+    return {
+      name,
+      feast: 'Feast Day',
+      tags: ['Catholic', 'Saint of the Day'],
+      bio: bio || 'Visit the link below to read the full biography.',
+      url: a.link || 'https://www.catholic.org/saints/',
+      imageUrl,
+      source: 'uCatholic',
+    };
+  }
+
+  // The feed gives a name and a blurb; the curated entry carries the real
+  // rank, tags and quote, so let it win where the two overlap.
+  _enrichSaint(saint) {
+    const embedded = SAINTS[saintTodayKey()];
+    if (saint && embedded) {
+      saint.tags = embedded.tags;
+      saint.feast = embedded.feast;
+      if (!saint.quote) { saint.quote = embedded.quote; saint.quoteSource = embedded.quoteSource; }
+    }
+    return saint;
+  }
+
+  // Fallback chain for installs without the sensor: today's cached result, a
+  // direct fetch (usually blocked by CSP), then the curated table.
   async _loadSaint() {
     const CACHE_KEY = 'catholic-daily-card-saint';
-    let saint = null;
+    let saint = this._getSaintFromHass();
 
-    try {
-      const c = JSON.parse(localStorage.getItem(CACHE_KEY));
-      if (c && c.key === saintTodayKey()) saint = c.saint;
-    } catch (_) {}
+    if (!saint) {
+      try {
+        const c = JSON.parse(localStorage.getItem(CACHE_KEY));
+        if (c && c.key === saintTodayKey()) saint = c.saint;
+      } catch (_) {}
+    }
 
     if (!saint) {
       saint = await fetchSaint();
@@ -1367,16 +1427,10 @@ class CatholicDailyCard extends HTMLElement {
       }
     }
 
-    // The feed only gives a name and a blurb — the curated entry carries the
-    // real rank, tags and quote, so let it win where the two overlap.
-    const embedded = SAINTS[saintTodayKey()];
-    if (saint && embedded) {
-      saint.tags = embedded.tags;
-      saint.feast = embedded.feast;
-      if (!saint.quote) { saint.quote = embedded.quote; saint.quoteSource = embedded.quoteSource; }
-    }
+    // A sensor update may have landed while the fetch was in flight.
+    if (this._saint && this._saintDay === saintTodayKey() && !saint) return;
 
-    this._saint = saint || embedded || {
+    this._saint = this._enrichSaint(saint) || SAINTS[saintTodayKey()] || {
       name: 'Saints of the Roman Calendar',
       feast: 'Feast Day',
       tags: ['Holy Men and Women'],
@@ -1385,6 +1439,7 @@ class CatholicDailyCard extends HTMLElement {
       quoteSource: 'Pope St. John Paul II',
       url: 'https://www.catholic.org/saints/',
     };
+    this._saintDay = saintTodayKey();
 
     this._lastDate = null; // force a repaint now that the saint is known
     this._tryRender();
@@ -1393,14 +1448,45 @@ class CatholicDailyCard extends HTMLElement {
   connectedCallback() {
     this._tryRender();
     this._scheduleRefresh();
+
+    // A long setTimeout is throttled or dropped outright when the tab is
+    // backgrounded or the device sleeps — which is exactly what a wall-mounted
+    // dashboard does overnight. Re-check the date whenever the tab becomes
+    // visible again, and on a short interval as a backstop.
+    this._onVisible = () => { if (!document.hidden) this._checkRollover(); };
+    document.addEventListener('visibilitychange', this._onVisible);
+    this._rolloverPoll = setInterval(() => this._checkRollover(), 60000);
+  }
+
+  disconnectedCallback() {
+    clearTimeout(this._midnightTimer);
+    clearInterval(this._rolloverPoll);
+    document.removeEventListener('visibilitychange', this._onVisible);
+  }
+
+  // Everything that must change at midnight goes through here, so the date,
+  // liturgy, rosary and saint can never roll over independently of each other.
+  _checkRollover() {
+    if (this._lastDate && this._lastDate !== new Date().toDateString()) {
+      this._rollover();
+    }
+  }
+
+  _rollover() {
+    this._lastDate = null;
+    this._saint = null;
+    this._saintDay = null;
+    this._saintLoaded = true; // _loadSaint below owns the reload
+    this._loadSaint();
+    this._tryRender();
   }
 
   _scheduleRefresh() {
+    clearTimeout(this._midnightTimer);
     const now = new Date();
-    const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-    setTimeout(() => {
-      this._lastDate = null;
-      this._tryRender();
+    const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 5);
+    this._midnightTimer = setTimeout(() => {
+      this._rollover();
       this._scheduleRefresh();
     }, midnight - now);
   }
