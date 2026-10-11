@@ -1453,15 +1453,26 @@ class CatholicDailyCard extends HTMLElement {
     // backgrounded or the device sleeps — which is exactly what a wall-mounted
     // dashboard does overnight. Re-check the date whenever the tab becomes
     // visible again, and on a short interval as a backstop.
+    // Home Assistant re-attaches cards when views change, so tear down any
+    // previous listeners first rather than stacking duplicates.
+    this._teardownWatchers();
     this._onVisible = () => { if (!document.hidden) this._checkRollover(); };
     document.addEventListener('visibilitychange', this._onVisible);
+    window.addEventListener('focus', this._onVisible);
     this._rolloverPoll = setInterval(() => this._checkRollover(), 60000);
   }
 
   disconnectedCallback() {
+    this._teardownWatchers();
+  }
+
+  _teardownWatchers() {
     clearTimeout(this._midnightTimer);
     clearInterval(this._rolloverPoll);
-    document.removeEventListener('visibilitychange', this._onVisible);
+    if (this._onVisible) {
+      document.removeEventListener('visibilitychange', this._onVisible);
+      window.removeEventListener('focus', this._onVisible);
+    }
   }
 
   // Everything that must change at midnight goes through here, so the date,
