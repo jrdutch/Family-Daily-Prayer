@@ -1357,9 +1357,14 @@ class CatholicDailyCard extends HTMLElement {
     this._tryRender();
   }
 
-  // Preferred source: a Home Assistant REST sensor that fetches the feed
-  // server-side. Home Assistant's CSP blocks the browser from reaching the
-  // feed directly, so this is the only path that works reliably.
+  // Preferred source: Home Assistant sensors that fetch the feed server-side.
+  // Home Assistant's CSP blocks the browser from reaching the feed directly,
+  // so this is the only path that works reliably.
+  //
+  // Two shapes are supported. A REST sensor carries the whole feed item in its
+  // attributes (title, description, link, thumbnail). A Scrape sensor can only
+  // hold a single value in its state, so the name comes from
+  // sensor.saint_of_the_day and the URL from sensor.saint_of_the_day_link.
   _getSaintFromHass() {
     const sensor = this._hass?.states?.['sensor.saint_of_the_day'];
     if (!sensor || sensor.state === 'unavailable') return null;
@@ -1382,12 +1387,18 @@ class CatholicDailyCard extends HTMLElement {
       bio = end > 200 ? cut.slice(0, end + 1) : cut + '…';
     }
 
+    const linkSensor = this._hass?.states?.['sensor.saint_of_the_day_link'];
+    const linkState = linkSensor?.state;
+    const url = a.link ||
+      (/^https?:\/\//.test(linkState || '') ? linkState : '') ||
+      'https://www.catholic.org/saints/';
+
     return {
       name,
       feast: 'Feast Day',
       tags: ['Catholic', 'Saint of the Day'],
-      bio: bio || 'Visit the link below to read the full biography.',
-      url: a.link || 'https://www.catholic.org/saints/',
+      bio: bio || 'Tap below to read the full biography.',
+      url,
       imageUrl,
       source: 'uCatholic',
     };
@@ -1453,15 +1464,26 @@ class CatholicDailyCard extends HTMLElement {
     // backgrounded or the device sleeps — which is exactly what a wall-mounted
     // dashboard does overnight. Re-check the date whenever the tab becomes
     // visible again, and on a short interval as a backstop.
+    // Home Assistant re-attaches cards when views change, so tear down any
+    // previous listeners first rather than stacking duplicates.
+    this._teardownWatchers();
     this._onVisible = () => { if (!document.hidden) this._checkRollover(); };
     document.addEventListener('visibilitychange', this._onVisible);
+    window.addEventListener('focus', this._onVisible);
     this._rolloverPoll = setInterval(() => this._checkRollover(), 60000);
   }
 
   disconnectedCallback() {
+    this._teardownWatchers();
+  }
+
+  _teardownWatchers() {
     clearTimeout(this._midnightTimer);
     clearInterval(this._rolloverPoll);
-    document.removeEventListener('visibilitychange', this._onVisible);
+    if (this._onVisible) {
+      document.removeEventListener('visibilitychange', this._onVisible);
+      window.removeEventListener('focus', this._onVisible);
+    }
   }
 
   // Everything that must change at midnight goes through here, so the date,
