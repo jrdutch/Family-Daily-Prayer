@@ -1363,8 +1363,8 @@ class CatholicDailyCard extends HTMLElement {
   //
   // Two shapes are supported. A REST sensor carries the whole feed item in its
   // attributes (title, description, link, thumbnail). A Scrape sensor can only
-  // hold a single value in its state, so the name comes from
-  // sensor.saint_of_the_day and the URL from sensor.saint_of_the_day_link.
+  // hold a single value in its state, so each field comes from its own sensor:
+  // saint_of_the_day plus _link, _image and _bio.
   _getSaintFromHass() {
     const sensor = this._hass?.states?.['sensor.saint_of_the_day'];
     if (!sensor || sensor.state === 'unavailable') return null;
@@ -1375,23 +1375,34 @@ class CatholicDailyCard extends HTMLElement {
     const name = (a.title || (sensor.state !== 'unknown' ? sensor.state : '') || '').trim();
     if (!name) return null;
 
+    // A companion Scrape sensor's state, when it holds a real value.
+    const companion = (suffix) => {
+      const s = this._hass?.states?.[`sensor.saint_of_the_day_${suffix}`]?.state;
+      return s && s !== 'unknown' && s !== 'unavailable' ? s.trim() : '';
+    };
+
     const tmp = document.createElement('div');
     tmp.innerHTML = a.description || '';
-    let imageUrl = a.thumbnail || tmp.querySelector('img')?.src || '';
     tmp.querySelectorAll('img').forEach(el => el.remove());
-    let bio = tmp.textContent.replace(/\s+/g, ' ')
-      .replace(/The post .* appeared first on .*$/, '').trim();
+
+    // WordPress appends "The post <title> appeared first on <site>." to every
+    // excerpt; strip it whether it arrived via the REST or the Scrape sensor.
+    let bio = (tmp.textContent.trim() || companion('bio'))
+      .replace(/\s+/g, ' ')
+      .replace(/\s*(?:The post\s*)?[^.]*\bappeared first on\b[^.]*\.?\s*$/i, '')
+      .trim();
     if (bio.length > 480) {
       const cut = bio.slice(0, 480);
       const end = cut.lastIndexOf('. ');
       bio = end > 200 ? cut.slice(0, end + 1) : cut + '…';
     }
 
-    const linkSensor = this._hass?.states?.['sensor.saint_of_the_day_link'];
-    const linkState = linkSensor?.state;
-    const url = a.link ||
-      (/^https?:\/\//.test(linkState || '') ? linkState : '') ||
-      'https://www.catholic.org/saints/';
+    const asUrl = (v) => (/^https?:\/\//.test(v || '') ? v : '');
+    const imageUrl = a.thumbnail ||
+      asUrl(new DOMParser().parseFromString(a.description || '', 'text/html')
+        .querySelector('img')?.getAttribute('src')) ||
+      asUrl(companion('image'));
+    const url = a.link || asUrl(companion('link')) || 'https://www.catholic.org/saints/';
 
     return {
       name,
